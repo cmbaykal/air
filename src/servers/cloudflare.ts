@@ -72,7 +72,7 @@ export const cloudflare: McpAdapter = {
         "--stdio",
         "npx -y mcp-server-cloudflare",
         "--port",
-        String(PORT),
+        String(this.port),
         "--host",
         "127.0.0.1",
         "--outputTransport",
@@ -83,16 +83,16 @@ export const cloudflare: McpAdapter = {
         CLOUDFLARE_ACCOUNT_ID: getEnv("CLOUDFLARE_ACCOUNT_ID"),
       },
     );
-    if (!(await pollPort(PORT, 30_000))) {
+    if (!(await pollPort(this.port, 30_000))) {
       throw new Error("Cloudflare MCP ayağa kalkmadı. .run/cloudflare.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("cloudflare", PORT);
+    await stopProcess("cloudflare", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

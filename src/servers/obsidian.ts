@@ -61,22 +61,22 @@ export const obsidian: McpAdapter = {
       "--stdio",
       `npx -y @modelcontextprotocol/server-filesystem ${JSON.stringify(vault)}`,
       "--port",
-      String(PORT),
+      String(this.port),
       "--host",
       "127.0.0.1",
       "--outputTransport",
       "streamableHttp",
     ]);
-    if (!(await pollPort(PORT, 30_000))) {
+    if (!(await pollPort(this.port, 30_000))) {
       throw new Error("Obsidian MCP ayağa kalkmadı. .run/obsidian.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("obsidian", PORT);
+    await stopProcess("obsidian", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

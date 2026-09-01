@@ -92,7 +92,7 @@ export const jira: McpAdapter = {
         "--stdio",
         "npx -y @aashari/mcp-server-atlassian-jira",
         "--port",
-        String(PORT),
+        String(this.port),
         "--host",
         "127.0.0.1",
         "--outputTransport",
@@ -104,16 +104,16 @@ export const jira: McpAdapter = {
         ATLASSIAN_API_TOKEN: getEnv("ATLASSIAN_API_TOKEN"),
       },
     );
-    if (!(await pollPort(PORT, 30_000))) {
+    if (!(await pollPort(this.port, 30_000))) {
       throw new Error("Jira MCP ayağa kalkmadı. .run/jira.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("jira", PORT);
+    await stopProcess("jira", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

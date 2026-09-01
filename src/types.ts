@@ -11,6 +11,7 @@ export interface CatalogFile {
 
 export interface UserPrefs {
   enabled: string[];
+  ports: Record<string, number>;
 }
 
 export interface EnvField {
@@ -30,6 +31,8 @@ export interface McpAdapter {
   title: string;
   port: number;
   url: string;
+  /** true ise katalog portu sabittir (Figma Desktop 3845). */
+  fixedPort?: boolean;
   requiredEnv: EnvField[];
   detect(): Promise<DetectResult>;
   install(): Promise<DetectResult>;

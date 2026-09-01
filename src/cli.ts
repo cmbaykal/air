@@ -1,6 +1,7 @@
 import { connectClients, CLIENTS, type ClientId } from "./clients.ts";
 import { nodeOk } from "./doctor.ts";
-import { disable, enable, enabledIds, loadCatalog, resolveIds } from "./registry.ts";
+import { applyListenPort, resolveListenPort } from "./ports.ts";
+import { catalogPort, disable, enable, enabledIds, loadCatalog, resolveIds } from "./registry.ts";
 import { isRunning } from "./process.ts";
 import { confirm, pickMany } from "./prompt.ts";
 import { maybePersistEnable, prepareAdapters, runSetup } from "./setup.ts";
@@ -78,7 +79,17 @@ async function startCommand(ids: string[], continueOnError: boolean): Promise<vo
   }
   for (const adapter of ready) {
     try {
+      const preferred = catalogPort(adapter.id);
+      const { port, fallback } = await resolveListenPort(adapter.id, preferred, Boolean(adapter.fixedPort));
+      applyListenPort(adapter, port);
       console.log(`\n${adapter.title} başlatılıyor → ${adapter.url}`);
+      if (fallback) {
+        console.log(`${adapter.title}: ${preferred} dolu, ${port} kullanılıyor.`);
+      }
+      if (await adapter.health()) {
+        console.log(`${adapter.title} zaten ayakta.`);
+        continue;
+      }
       await adapter.start();
       const ok = await adapter.health();
       if (!ok) throw new Error("Health check başarısız.");

@@ -8,13 +8,27 @@ export function loadCatalog(): CatalogEntry[] {
   return raw.servers;
 }
 
+function sanitizePorts(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "number" && Number.isInteger(value) && value > 0 && value < 65536) {
+      out[id] = value;
+    }
+  }
+  return out;
+}
+
 export function loadPrefs(): UserPrefs {
-  if (!fs.existsSync(USER_PATH)) return { enabled: [] };
+  if (!fs.existsSync(USER_PATH)) return { enabled: [], ports: {} };
   try {
     const raw = JSON.parse(fs.readFileSync(USER_PATH, "utf8")) as UserPrefs;
-    return { enabled: Array.isArray(raw.enabled) ? raw.enabled : [] };
+    return {
+      enabled: Array.isArray(raw.enabled) ? raw.enabled : [],
+      ports: sanitizePorts(raw.ports),
+    };
   } catch {
-    return { enabled: [] };
+    return { enabled: [], ports: {} };
   }
 }
 
@@ -49,9 +63,33 @@ export function disable(ids: string[]): string[] {
   return prefs.enabled;
 }
 
+export function catalogPort(id: string): number {
+  const entry = loadCatalog().find((s) => s.id === id);
+  if (!entry) throw new Error(`Katalogda yok: ${id}`);
+  return entry.port;
+}
+
+export function setAssignedPort(id: string, port: number | null): void {
+  const prefs = loadPrefs();
+  const ports = { ...prefs.ports };
+  if (port === null) {
+    if (!(id in ports)) return;
+    delete ports[id];
+  } else if (ports[id] === port) {
+    return;
+  } else {
+    ports[id] = port;
+  }
+  prefs.ports = ports;
+  savePrefs(prefs);
+}
+
 export function getAdapter(id: string): McpAdapter {
   const adapter = adapters[id];
   if (!adapter) throw new Error(`Adapter yok: ${id}`);
+  const port = loadPrefs().ports[id] ?? catalogPort(id);
+  adapter.port = port;
+  adapter.url = `http://127.0.0.1:${port}/mcp`;
   return adapter;
 }
 

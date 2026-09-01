@@ -51,23 +51,23 @@ export const notion: McpAdapter = {
         "--transport",
         "http",
         "--port",
-        String(PORT),
+        String(this.port),
         "--host",
         "127.0.0.1",
         "--unsafe-disable-auth",
       ],
       { NOTION_TOKEN: getEnv("NOTION_TOKEN") },
     );
-    if (!(await pollPort(PORT, 30_000))) {
+    if (!(await pollPort(this.port, 30_000))) {
       throw new Error("Notion MCP ayağa kalkmadı. .run/notion.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("notion", PORT);
+    await stopProcess("notion", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

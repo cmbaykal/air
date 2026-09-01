@@ -34,22 +34,22 @@ export const xcode: McpAdapter = {
       "--stdio",
       "npx -y xcodebuildmcp@latest mcp",
       "--port",
-      String(PORT),
+      String(this.port),
       "--host",
       "127.0.0.1",
       "--outputTransport",
       "streamableHttp",
     ]);
-    if (!(await pollPort(PORT, 45_000))) {
+    if (!(await pollPort(this.port, 45_000))) {
       throw new Error("Xcode MCP ayağa kalkmadı. .run/xcode.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("xcode", PORT);
+    await stopProcess("xcode", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

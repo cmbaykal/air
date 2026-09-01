@@ -55,22 +55,22 @@ export const maestro: McpAdapter = {
       "--stdio",
       "maestro mcp",
       "--port",
-      String(PORT),
+      String(this.port),
       "--host",
       "127.0.0.1",
       "--outputTransport",
       "streamableHttp",
     ]);
-    if (!(await pollPort(PORT, 45_000))) {
+    if (!(await pollPort(this.port, 45_000))) {
       throw new Error("Maestro MCP ayağa kalkmadı. .run/maestro.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("maestro", PORT);
+    await stopProcess("maestro", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

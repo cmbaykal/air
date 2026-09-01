@@ -54,7 +54,7 @@ export const github: McpAdapter = {
         "--stdio",
         "npx -y @modelcontextprotocol/server-github",
         "--port",
-        String(PORT),
+        String(this.port),
         "--host",
         "127.0.0.1",
         "--outputTransport",
@@ -62,16 +62,16 @@ export const github: McpAdapter = {
       ],
       { GITHUB_PERSONAL_ACCESS_TOKEN: getEnv("GITHUB_PERSONAL_ACCESS_TOKEN") },
     );
-    if (!(await pollPort(PORT, 30_000))) {
+    if (!(await pollPort(this.port, 30_000))) {
       throw new Error("GitHub MCP ayağa kalkmadı. .run/github.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("github", PORT);
+    await stopProcess("github", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

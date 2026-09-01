@@ -61,22 +61,22 @@ export const git: McpAdapter = {
       "--stdio",
       `uvx mcp-server-git --repository ${JSON.stringify(repo)}`,
       "--port",
-      String(PORT),
+      String(this.port),
       "--host",
       "127.0.0.1",
       "--outputTransport",
       "streamableHttp",
     ]);
-    if (!(await pollPort(PORT, 45_000))) {
+    if (!(await pollPort(this.port, 45_000))) {
       throw new Error("Git MCP ayağa kalkmadı. .run/git.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("git", PORT);
+    await stopProcess("git", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

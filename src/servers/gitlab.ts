@@ -71,7 +71,7 @@ export const gitlab: McpAdapter = {
         "--stdio",
         "npx -y @zereight/mcp-gitlab",
         "--port",
-        String(PORT),
+        String(this.port),
         "--host",
         "127.0.0.1",
         "--outputTransport",
@@ -82,16 +82,16 @@ export const gitlab: McpAdapter = {
         GITLAB_API_URL: apiUrl(),
       },
     );
-    if (!(await pollPort(PORT, 30_000))) {
+    if (!(await pollPort(this.port, 30_000))) {
       throw new Error("GitLab MCP ayağa kalkmadı. .run/gitlab.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("gitlab", PORT);
+    await stopProcess("gitlab", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

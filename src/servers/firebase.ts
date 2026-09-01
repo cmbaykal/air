@@ -68,22 +68,22 @@ export const firebase: McpAdapter = {
       "--stdio",
       `npx -y firebase-tools@latest mcp --dir ${JSON.stringify(dir)}`,
       "--port",
-      String(PORT),
+      String(this.port),
       "--host",
       "127.0.0.1",
       "--outputTransport",
       "streamableHttp",
     ]);
-    if (!(await pollPort(PORT, 45_000))) {
+    if (!(await pollPort(this.port, 45_000))) {
       throw new Error("Firebase MCP ayağa kalkmadı. .run/firebase.log dosyasına bakın.");
     }
   },
 
   async stop() {
-    await stopProcess("firebase", PORT);
+    await stopProcess("firebase", this.port);
   },
 
   async health() {
-    return pollPort(PORT, 500, 100);
+    return pollPort(this.port, 500, 100);
   },
 };

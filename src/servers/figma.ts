@@ -10,6 +10,7 @@ export const figma: McpAdapter = {
   title: "Figma",
   port: PORT,
   url: `http://127.0.0.1:${PORT}/mcp`,
+  fixedPort: true,
   requiredEnv: [],
 
   async detect() {
