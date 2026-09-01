@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.run/
+.air/user.json
+*.bak
+.DS_Store

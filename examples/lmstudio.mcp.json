@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "air-figma": { "url": "http://127.0.0.1:3845/mcp" },
+    "air-jira": { "url": "http://127.0.0.1:3101/mcp" },
+    "air-notion": { "url": "http://127.0.0.1:3102/mcp" },
+    "air-obsidian": { "url": "http://127.0.0.1:3103/mcp" }
+  }
+}

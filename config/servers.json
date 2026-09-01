@@ -1,0 +1,8 @@
+{
+  "servers": [
+    { "id": "figma", "title": "Figma", "port": 3845, "defaultEnabled": false },
+    { "id": "jira", "title": "Jira", "port": 3101, "defaultEnabled": false },
+    { "id": "notion", "title": "Notion", "port": 3102, "defaultEnabled": false },
+    { "id": "obsidian", "title": "Obsidian", "port": 3103, "defaultEnabled": false }
+  ]
+}

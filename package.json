@@ -1,0 +1,23 @@
+{
+  "name": "air",
+  "version": "1.0.0",
+  "description": "Local MCP orchestrator for Figma, Jira, Notion, Obsidian",
+  "type": "module",
+  "bin": {
+    "air": "./bin/air.mjs"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts start",
+    "air": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
