@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { RUN_DIR, ensureDir } from "./paths.ts";
-import { isWin, killTree, npxBin } from "./platform.ts";
-import { portOpen } from "./health.ts";
+import { isWin, killPort, killTree, npxBin } from "./platform.ts";
+import { portOpen, wait } from "./health.ts";
 
 function pidPath(id: string): string {
   return path.join(RUN_DIR, `${id}.pid`);
@@ -56,12 +56,17 @@ export async function startNpx(
   child.unref();
 }
 
-export async function stopProcess(id: string): Promise<boolean> {
+export async function stopProcess(id: string, port: number): Promise<boolean> {
   const pid = readPid(id);
   if (pid && isPidAlive(pid)) {
     await killTree(pid);
   }
+  await wait(200);
+  if (await portOpen(port)) {
+    await killPort(port);
+    await wait(200);
+  }
   const file = pidPath(id);
   if (fs.existsSync(file)) fs.unlinkSync(file);
-  return Boolean(pid);
+  return !(await portOpen(port));
 }

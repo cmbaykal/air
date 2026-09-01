@@ -102,6 +102,56 @@ export async function killTree(pid: number): Promise<void> {
       /* already gone */
     }
   }
+  await new Promise((r) => setTimeout(r, 250));
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      /* gone */
+    }
+  }
+}
+
+export async function pidsOnPort(port: number): Promise<number[]> {
+  if (isWin) {
+    try {
+      const { stdout } = await execFileAsync("netstat", ["-ano", "-p", "TCP"]);
+      const pids = new Set<number>();
+      for (const line of stdout.split(/\r?\n/)) {
+        if (!line.includes("LISTENING")) continue;
+        if (!line.includes(`:${port} `) && !line.includes(`:${port}\t`)) continue;
+        const parts = line.trim().split(/\s+/);
+        const pid = Number(parts[parts.length - 1]);
+        if (pid > 0) pids.add(pid);
+      }
+      return [...pids];
+    } catch {
+      return [];
+    }
+  }
+  try {
+    const { stdout } = await execFileAsync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"]);
+    return [...new Set(stdout.split(/\s+/).map(Number).filter((n) => n > 0))];
+  } catch {
+    return [];
+  }
+}
+
+export async function killPort(port: number): Promise<void> {
+  const pids = await pidsOnPort(port);
+  for (const pid of pids) {
+    await killTree(pid);
+  }
+}
+
+export function runInteractive(command: string, args: string[]): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: "inherit", shell: isWin });
+    child.on("exit", (code) => resolve(code ?? 1));
+    child.on("error", reject);
+  });
 }
 
 export async function runInstall(args: string[]): Promise<{ ok: boolean; output: string }> {

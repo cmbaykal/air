@@ -3,6 +3,14 @@
     "air-figma": { "url": "http://127.0.0.1:3845/mcp" },
     "air-jira": { "url": "http://127.0.0.1:3101/mcp" },
     "air-notion": { "url": "http://127.0.0.1:3102/mcp" },
-    "air-obsidian": { "url": "http://127.0.0.1:3103/mcp" }
+    "air-obsidian": { "url": "http://127.0.0.1:3103/mcp" },
+    "air-github": { "url": "http://127.0.0.1:3104/mcp" },
+    "air-gitlab": { "url": "http://127.0.0.1:3105/mcp" },
+    "air-git": { "url": "http://127.0.0.1:3106/mcp" },
+    "air-firebase": { "url": "http://127.0.0.1:3107/mcp" },
+    "air-cloudflare": { "url": "http://127.0.0.1:3108/mcp" },
+    "air-xcode": { "url": "http://127.0.0.1:3109/mcp" },
+    "air-android": { "url": "http://127.0.0.1:3110/mcp" },
+    "air-maestro": { "url": "http://127.0.0.1:3111/mcp" }
   }
 }

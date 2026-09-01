@@ -20,6 +20,46 @@
       "type": "remote",
       "url": "http://127.0.0.1:3103/mcp",
       "enabled": true
+    },
+    "air-github": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3104/mcp",
+      "enabled": true
+    },
+    "air-gitlab": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3105/mcp",
+      "enabled": true
+    },
+    "air-git": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3106/mcp",
+      "enabled": true
+    },
+    "air-firebase": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3107/mcp",
+      "enabled": true
+    },
+    "air-cloudflare": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3108/mcp",
+      "enabled": true
+    },
+    "air-xcode": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3109/mcp",
+      "enabled": true
+    },
+    "air-android": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3110/mcp",
+      "enabled": true
+    },
+    "air-maestro": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3111/mcp",
+      "enabled": true
     }
   }
 }

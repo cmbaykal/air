@@ -64,7 +64,7 @@ export const notion: McpAdapter = {
   },
 
   async stop() {
-    await stopProcess("notion");
+    await stopProcess("notion", PORT);
   },
 
   async health() {

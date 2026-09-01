@@ -36,20 +36,37 @@ export function setEnv(key: string, value: string): void {
   fs.writeFileSync(ENV_PATH, `${lines.join("\n")}\n`, "utf8");
 }
 
-export async function ensureFields(fields: EnvField[]): Promise<void> {
+export function clearEnv(keys: string[]): void {
+  const current = loadEnvFile();
+  for (const key of keys) {
+    delete current[key];
+    delete process.env[key];
+  }
+  const lines = Object.entries(current).map(([k, v]) => `${k}=${v}`);
+  fs.writeFileSync(ENV_PATH, lines.length ? `${lines.join("\n")}\n` : "", "utf8");
+}
+
+export async function ensureFields(fields: EnvField[], force = false): Promise<void> {
   if (fields.length === 0) return;
   loadEnvFile();
   for (const field of fields) {
-    if (getEnv(field.key)) continue;
-    if (field.helpUrl) {
+    const existing = getEnv(field.key);
+    if (existing && !force) continue;
+    if (field.helpUrl && (!existing || force)) {
       console.log(`${field.label} gerekli.`);
-      if (await confirm("Oluşturma sayfasını tarayıcıda açayım mı?", true)) {
+      if (await confirm("Oluşturma sayfasını tarayıcıda açayım mı?", !existing)) {
         openUrl(field.helpUrl);
       }
     }
-    const value = await ask(field.label);
-    if (!value) {
-      throw new Error(`${field.key} boş bırakılamaz.`);
+    const hint = existing ? (field.secret ? "kayıtlı, Enter=aynı" : existing) : "";
+    let value = "";
+    while (!value) {
+      value = (await ask(field.label, hint)).trim();
+      if (value === "kayıtlı, Enter=aynı" || (hint && value === hint && field.secret)) {
+        value = existing;
+      }
+      if (existing && !value) value = existing;
+      if (!value) console.log("Boş bırakılamaz, tekrar girin.");
     }
     setEnv(field.key, value);
   }

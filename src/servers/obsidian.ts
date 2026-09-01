@@ -73,7 +73,7 @@ export const obsidian: McpAdapter = {
   },
 
   async stop() {
-    await stopProcess("obsidian");
+    await stopProcess("obsidian", PORT);
   },
 
   async health() {

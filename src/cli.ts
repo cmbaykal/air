@@ -71,8 +71,12 @@ async function startCommand(ids: string[], continueOnError: boolean): Promise<vo
     return;
   }
   const adapters = resolveIds(selected);
-  await prepareAdapters(adapters);
-  for (const adapter of adapters) {
+  const ready = await prepareAdapters(adapters);
+  if (!ready.length) {
+    console.log("Başlatılacak sunucu yok. Bilgileri düzeltmek için: npx air setup");
+    return;
+  }
+  for (const adapter of ready) {
     try {
       console.log(`\n${adapter.title} başlatılıyor → ${adapter.url}`);
       await adapter.start();
@@ -88,14 +92,25 @@ async function startCommand(ids: string[], continueOnError: boolean): Promise<vo
 }
 
 async function stopCommand(ids: string[]): Promise<void> {
-  const targets = ids.length ? resolveIds(ids) : await runningAdapters();
+  const explicit = ids.length > 0;
+  const running = await runningAdapters();
+  const targets = explicit ? resolveIds(ids) : running.filter((a) => a.id !== "figma");
+  if (!explicit && running.some((a) => a.id === "figma")) {
+    console.log("Figma Desktop açık bırakıldı (Air kapatmaz). Kapatmak için Figma uygulamasını kapatın.");
+  }
   if (!targets.length) {
-    console.log("Çalışan sunucu yok.");
+    if (!running.length) console.log("Çalışan sunucu yok.");
     return;
   }
   for (const adapter of targets) {
+    if (adapter.id === "figma") {
+      console.log("Figma Desktop Air ile kapanmaz. Kapatmak için Figma uygulamasını kapatın.");
+      continue;
+    }
     await adapter.stop();
-    console.log(`${adapter.title} durduruldu.`);
+    const still = await adapter.health();
+    if (still) console.log(`${adapter.title} hâlâ ayakta. .run/${adapter.id}.log dosyasına bakın.`);
+    else console.log(`${adapter.title} durduruldu.`);
   }
 }
 
@@ -164,12 +179,22 @@ async function main(): Promise<void> {
       help();
       return;
     case "setup":
-      await runSetup();
-      if (await confirm("Şimdi başlatayım mı?", false)) {
-        await startCommand(enabledIds(), flags.has("--continue-on-error"));
+      try {
+        await runSetup();
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : error);
+        console.log("Kurulum durmadı. Tekrar deneyebilirsiniz.");
       }
-      if (await confirm("Bir istemciye bağlayayım mı?", false)) {
-        await connectCommand({}, flags);
+      try {
+        if (await confirm("Şimdi başlatayım mı?", false)) {
+          await startCommand(enabledIds(), true);
+        }
+        if (await confirm("Bir istemciye bağlayayım mı?", false)) {
+          await connectCommand({}, flags);
+        }
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : error);
+        console.log("Devam etmek için: npx air setup");
       }
       return;
     case "list":
