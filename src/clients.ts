@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { isWin } from "./platform.ts";
+import { isMac, isWin } from "./platform.ts";
 import { confirm } from "./prompt.ts";
 import type { McpAdapter } from "./types.ts";
 
@@ -67,9 +67,13 @@ export function clientConfigPath(id: ClientId): string | null {
     case "lmstudio":
       return home(".lmstudio", "mcp.json");
     case "claude-desktop":
-      return isWin
-        ? path.join(process.env.APPDATA ?? home("AppData", "Roaming"), "Claude", "claude_desktop_config.json")
-        : home("Library", "Application Support", "Claude", "claude_desktop_config.json");
+      if (isWin) {
+        return path.join(process.env.APPDATA ?? home("AppData", "Roaming"), "Claude", "claude_desktop_config.json");
+      }
+      if (isMac) {
+        return home("Library", "Application Support", "Claude", "claude_desktop_config.json");
+      }
+      return home(".config", "Claude", "claude_desktop_config.json");
     case "opencode":
       return isWin
         ? path.join(process.env.APPDATA ?? home("AppData", "Roaming"), "opencode", "opencode.json")

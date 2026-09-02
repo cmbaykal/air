@@ -1,10 +1,10 @@
 # Air
 
-Yerel MCP orkestratörü. Figma, Jira, Notion ve Obsidian sunucularını kendi makinenizde çalıştırır. Cursor, Claude, LM Studio veya OpenCode bu sunuculara localhost üzerinden bağlanır.
+Yerel MCP orkestratörü. Katalogdaki sunucuları (Figma, Jira, Notion, Obsidian, GitHub, GitLab, Git, Firebase, Cloudflare, Xcode, Android, Maestro) kendi makinenizde çalıştırır. Cursor, Claude, LM Studio veya OpenCode localhost üzerinden bağlanır. Skill ve kural da aynı istemcilere yazılabilir.
 
 Hiçbir sunucu varsayılan olarak açık değildir. Hangisini istiyorsanız onu seçip başlatırsınız.
 
-macOS ve Windows. Node.js 20+ gerekir.
+macOS, Windows ve Linux. Node.js 20+ gerekir. `npm link` sonrası komut: `air` (her yerden; `.env` Air klasöründedir).
 
 ---
 
@@ -32,7 +32,14 @@ chmod +x scripts/setup.macos.sh
 powershell -ExecutionPolicy Bypass -File scripts/setup.windows.ps1
 ```
 
-Script Node 20+ yoksa kurmayı dener (`brew` / `winget`), sonra `npm install`, `npm link` ve `air setup` çalıştırır.
+**Linux** — proje klasöründe:
+
+```bash
+chmod +x scripts/setup.linux.sh
+./scripts/setup.linux.sh
+```
+
+Script Node 20+ yoksa kurmayı dener (`brew` / `winget`), Linux’ta Node LTS sayfasını açar; sonra `npm install`, `npm link` ve `air setup` çalıştırır.
 
 ### Node zaten varsa
 
@@ -58,7 +65,7 @@ Token’lar `.env` dosyasına yazılır, git’e girmez.
 
 ## 3. Çalıştırın
 
-Tüm komutlar proje klasöründen (`air`) çalışır.
+`npm link` sonrası komutlar herhangi bir dizinden çalışır.
 
 ### Sadece Figma
 
@@ -140,7 +147,7 @@ air connect --client claude-code --write
 |---|---|
 | Cursor | `~/.cursor/mcp.json` |
 | LM Studio | `~/.lmstudio/mcp.json` |
-| Claude Desktop | macOS `~/Library/Application Support/Claude/claude_desktop_config.json` — Windows `%APPDATA%\Claude\claude_desktop_config.json` |
+| Claude Desktop | macOS `~/Library/Application Support/Claude/claude_desktop_config.json` — Windows `%APPDATA%\Claude\claude_desktop_config.json` — Linux `~/.config/Claude/claude_desktop_config.json` |
 | OpenCode | `~/.config/opencode/opencode.json` |
 | Claude Code | `~/.claude.json` (user scope, `type: "http"`) |
 
@@ -214,14 +221,39 @@ air connect --client cursor --write
 Sonraki günler:
 
 ```bash
-cd air
 air start figma jira
 air status
 ```
 
 ---
 
+## Kaldırma
+
+Otomatik kaldırma yok. Tamamen silmek için:
+
+```bash
+air stop
+cd air
+npm unlink
+cd ..
+rm -rf air
+```
+
+Windows’ta klasörü silmek yeter; `npm unlink` aynı şekilde proje dizininde çalışır.
+
+`.env`, `.air` ve `.run` proje klasörünün içindedir; klasörle birlikte gider.
+
+`air connect --write` kullandıysanız istemci config’lerinden `air-*` kayıtlarını silin. Dosya yolları yukarıdaki **Yapay zeka aracına bağlayın** tablosunda.
+
+`air skill` / `air rule` eklediyseniz ilgili skill klasörlerini, Cursor kural `.mdc` dosyalarını ve `<!-- air:rule:... -->` bloklarını da silin. Yollar **Skill ve kural** tablosunda.
+
+Figma, Git, Java gibi Air’in kurduğu uygulamalar durur; onları ayrıca kaldırmanız gerekir.
+
+---
+
 ## Yeni sunucu ekleme
+
+Katalog genişletilebilir. Yeni MCP için:
 
 1. `src/servers/yeni.ts` — `McpAdapter` yaz
 2. `src/servers/index.ts` — kaydet
@@ -231,3 +263,5 @@ air status
 air enable yeni
 air start yeni
 ```
+
+Katalogda olmayan bir MCP eklemek istiyorsanız pull request açabilirsiniz. Kendi makineniz veya ekibiniz için değiştirmek isterseniz repoyu fork edip bağımsız düzenleyebilirsiniz.

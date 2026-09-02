@@ -30,6 +30,12 @@ export const maestro: McpAdapter = {
         ["install", "openjdk@17"],
         "Microsoft.OpenJDK.17",
         "https://adoptium.net/",
+        {
+          apt: "openjdk-17-jdk",
+          dnf: "java-17-openjdk-devel",
+          pacman: "jdk17-openjdk",
+          zypper: "java-17-openjdk-devel",
+        },
       );
       if (!ok) return { ok: false, message: "Java kurulmadı" };
     }

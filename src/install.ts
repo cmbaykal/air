@@ -1,9 +1,48 @@
 import { confirm } from "./prompt.ts";
-import { commandExists, isMac, isWin, openUrl, runInstall } from "./platform.ts";
+import {
+  commandExists,
+  isLinux,
+  isMac,
+  isWin,
+  openUrl,
+  runInstall,
+  runInteractive,
+} from "./platform.ts";
 
-export async function ensurePackageManager(): Promise<"brew" | "winget" | null> {
+type LinuxPm = "apt" | "dnf" | "pacman" | "zypper";
+export type LinuxPkg = string | Partial<Record<LinuxPm, string>>;
+
+async function detectLinuxPm(): Promise<LinuxPm | null> {
+  if (await commandExists("apt-get")) return "apt";
+  if (await commandExists("dnf")) return "dnf";
+  if (await commandExists("pacman")) return "pacman";
+  if (await commandExists("zypper")) return "zypper";
+  return null;
+}
+
+function linuxInstallArgs(pm: LinuxPm, pkg: string): string[] {
+  switch (pm) {
+    case "apt":
+      return ["sudo", "apt-get", "install", "-y", pkg];
+    case "dnf":
+      return ["sudo", "dnf", "install", "-y", pkg];
+    case "pacman":
+      return ["sudo", "pacman", "-S", "--noconfirm", pkg];
+    case "zypper":
+      return ["sudo", "zypper", "--non-interactive", "install", pkg];
+  }
+}
+
+function resolveLinuxPkg(pm: LinuxPm, linuxPkg?: LinuxPkg): string | undefined {
+  if (!linuxPkg) return undefined;
+  if (typeof linuxPkg === "string") return linuxPkg;
+  return linuxPkg[pm];
+}
+
+export async function ensurePackageManager(): Promise<"brew" | "winget" | LinuxPm | null> {
   if (isMac && (await commandExists("brew"))) return "brew";
   if (isWin && (await commandExists("winget"))) return "winget";
+  if (isLinux) return detectLinuxPm();
   return null;
 }
 
@@ -12,6 +51,7 @@ export async function installApp(
   brewArgs: string[],
   wingetId: string,
   downloadUrl: string,
+  linuxPkg?: LinuxPkg,
 ): Promise<boolean> {
   if (!(await confirm(`${title} yüklü değil. Kurayım mı?`, true))) {
     openUrl(downloadUrl);
@@ -47,7 +87,20 @@ export async function installApp(
     }
     return true;
   }
-  console.log("Otomatik kurulum için macOS'ta Homebrew, Windows'ta winget gerekir.");
+  if (isLinux && pm) {
+    const pkg = resolveLinuxPkg(pm, linuxPkg);
+    if (pkg) {
+      console.log(`${title} ${pm} ile kuruluyor...`);
+      const args = linuxInstallArgs(pm, pkg);
+      const code = await runInteractive(args[0], args.slice(1));
+      if (code !== 0) {
+        openUrl(downloadUrl);
+        return false;
+      }
+      return true;
+    }
+  }
+  console.log("Otomatik kurulum için macOS'ta Homebrew, Windows'ta winget, Linux'ta apt/dnf/pacman gerekir.");
   openUrl(downloadUrl);
   return false;
 }

@@ -32,7 +32,7 @@ export const git: McpAdapter = {
 
   async install() {
     if (!(await commandExists("git"))) {
-      const ok = await installApp("Git", ["install", "git"], "Git.Git", "https://git-scm.com/downloads");
+      const ok = await installApp("Git", ["install", "git"], "Git.Git", "https://git-scm.com/downloads", "git");
       if (!ok) return { ok: false, message: "Git kurulmadı" };
     }
     if (!(await commandExists("uvx"))) {

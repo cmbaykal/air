@@ -8,6 +8,11 @@ const execFileAsync = promisify(execFile);
 
 export const isWin = process.platform === "win32";
 export const isMac = process.platform === "darwin";
+export const isLinux = process.platform === "linux";
+
+function firstExisting(paths: string[]): string | null {
+  return paths.find((p) => p && fs.existsSync(p)) ?? null;
+}
 
 export function commandExists(name: string): Promise<boolean> {
   const cmd = isWin ? "where" : "which";
@@ -21,7 +26,11 @@ export function openUrl(url: string): void {
     spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref();
     return;
   }
-  spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+  if (isMac) {
+    spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+    return;
+  }
+  spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
 }
 
 export function npxBin(): string {
@@ -50,6 +59,15 @@ export function findFigmaApp(): string | null {
       if (match) return match;
     }
   }
+  if (isLinux) {
+    return firstExisting([
+      "/opt/figma-linux/figma-linux",
+      "/usr/bin/figma-linux",
+      "/usr/bin/figma",
+      "/snap/bin/figma-linux",
+      path.join(os.homedir(), ".local", "bin", "figma-linux"),
+    ]);
+  }
   return null;
 }
 
@@ -63,6 +81,16 @@ export function findObsidianApp(): string | null {
     const exe = path.join(local, "Obsidian", "Obsidian.exe");
     return fs.existsSync(exe) ? exe : null;
   }
+  if (isLinux) {
+    return firstExisting([
+      "/opt/Obsidian/obsidian",
+      "/opt/obsidian/obsidian",
+      "/usr/bin/obsidian",
+      "/usr/bin/Obsidian",
+      "/snap/bin/obsidian",
+      path.join(os.homedir(), ".local", "bin", "obsidian"),
+    ]);
+  }
   return null;
 }
 
@@ -71,21 +99,17 @@ export async function openApp(name: "Figma" | "Obsidian"): Promise<void> {
     await execFileAsync("open", ["-a", name]);
     return;
   }
-  if (name === "Figma") {
-    const exe = findFigmaApp();
-    if (exe) {
-      spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
-      return;
-    }
-    spawn("cmd", ["/c", "start", "", "Figma"], { detached: true, stdio: "ignore" }).unref();
-    return;
-  }
-  const exe = findObsidianApp();
+  const exe = name === "Figma" ? findFigmaApp() : findObsidianApp();
   if (exe) {
     spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
     return;
   }
-  spawn("cmd", ["/c", "start", "", "Obsidian"], { detached: true, stdio: "ignore" }).unref();
+  if (isWin) {
+    spawn("cmd", ["/c", "start", "", name], { detached: true, stdio: "ignore" }).unref();
+    return;
+  }
+  const bin = name === "Figma" ? "figma-linux" : "obsidian";
+  spawn(bin, [], { detached: true, stdio: "ignore" }).unref();
 }
 
 export async function killTree(pid: number): Promise<void> {
@@ -134,6 +158,18 @@ export async function pidsOnPort(port: number): Promise<number[]> {
   try {
     const { stdout } = await execFileAsync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"]);
     return [...new Set(stdout.split(/\s+/).map(Number).filter((n) => n > 0))];
+  } catch {
+    /* Linux'ta lsof olmayabilir */
+  }
+  try {
+    const { stdout } = await execFileAsync("ss", ["-lptn", `sport = :${port}`]);
+    return [...new Set([...stdout.matchAll(/pid=(\d+)/g)].map((m) => Number(m[1])).filter((n) => n > 0))];
+  } catch {
+    /* ss yok */
+  }
+  try {
+    const { stdout } = await execFileAsync("fuser", [`${port}/tcp`]);
+    return [...new Set(stdout.trim().split(/\s+/).map(Number).filter((n) => n > 0))];
   } catch {
     return [];
   }
