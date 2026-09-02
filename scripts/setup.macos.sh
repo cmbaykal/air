@@ -28,5 +28,6 @@ fi
 
 echo "Bağımlılıklar kuruluyor..."
 npm install
+npm link
 echo "Kurulum sihirbazı başlıyor..."
-exec npx air setup
+exec air setup

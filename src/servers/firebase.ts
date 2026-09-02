@@ -73,6 +73,7 @@ export const firebase: McpAdapter = {
       "127.0.0.1",
       "--outputTransport",
       "streamableHttp",
+      "--stateful",
     ]);
     if (!(await pollPort(this.port, 45_000))) {
       throw new Error("Firebase MCP ayağa kalkmadı. .run/firebase.log dosyasına bakın.");

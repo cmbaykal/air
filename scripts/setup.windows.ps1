@@ -26,5 +26,6 @@ if (Test-NeedNode) {
 
 Write-Host "Bağımlılıklar kuruluyor..."
 npm install
+npm link
 Write-Host "Kurulum sihirbazı başlıyor..."
-npx air setup
+air setup

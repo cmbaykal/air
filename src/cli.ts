@@ -1,30 +1,41 @@
-import { connectClients, CLIENTS, type ClientId } from "./clients.ts";
+import path from "node:path";
+import { connectClients, CLIENTS, CONTENT_CLIENTS, isContentClient, type ClientId, type ContentClientId } from "./clients.ts";
 import { nodeOk } from "./doctor.ts";
 import { applyListenPort, resolveListenPort } from "./ports.ts";
 import { catalogPort, disable, enable, enabledIds, loadCatalog, resolveIds } from "./registry.ts";
 import { isRunning } from "./process.ts";
 import { confirm, pickMany } from "./prompt.ts";
-import { maybePersistEnable, prepareAdapters, runSetup } from "./setup.ts";
+import { addRule, listRules, removeRule } from "./rules.ts";
+import { addSkill, listSkills, removeSkill } from "./skills.ts";
+import { maybePersistEnable, prepareAdapters, runSetupWizard } from "./setup.ts";
 import type { McpAdapter } from "./types.ts";
 
 function help(): void {
   console.log(`Air — local MCP orkestratörü
 
 Kullanım:
-  npx air setup
-  npx air list
-  npx air enable <id...>
-  npx air disable <id...>
-  npx air start [id...]
-  npx air stop [id...]
-  npx air status
-  npx air doctor [id...]
-  npx air connect [--client cursor|lmstudio|claude-desktop|claude-code|opencode] [--write] [--print]
+  air setup
+  air list
+  air enable <id...>
+  air disable <id...>
+  air start [id...]
+  air stop [id...]
+  air status
+  air doctor [id...]
+  air connect [--client cursor|lmstudio|claude-desktop|claude-code|opencode] [--write] [--print]
+  air skill add <url> [--client cursor|claude-code|opencode] [--project [dir]] [--write] [--print]
+  air skill list
+  air skill remove <id> [--client ...] [--project [dir]]
+  air rule add <url> [--client cursor|claude-code|opencode] [--project [dir]] [--write] [--print]
+  air rule list
+  air rule remove <id> [--client ...] [--project [dir]]
 
 Örnek:
-  npx air enable figma
-  npx air start figma
-  npx air connect --client cursor --write
+  air enable figma
+  air start figma
+  air connect --client cursor --write
+  air skill add https://raw.githubusercontent.com/org/repo/main/SKILL.md --write
+  air rule add https://example.com/style.md --project --write
 `);
 }
 
@@ -38,6 +49,13 @@ function parseArgs(argv: string[]) {
       flags.add(a);
     } else if (a === "--client" && argv[i + 1]) {
       values.client = argv[++i];
+    } else if (a === "--project") {
+      flags.add("--project");
+      if (argv[i + 1] && !argv[i + 1].startsWith("-")) {
+        values.project = path.resolve(argv[++i]);
+      } else {
+        values.project = process.cwd();
+      }
     } else if (a.startsWith("--")) {
       throw new Error(`Bilinmeyen bayrak: ${a}`);
     } else {
@@ -74,7 +92,7 @@ async function startCommand(ids: string[], continueOnError: boolean): Promise<vo
   const adapters = resolveIds(selected);
   const ready = await prepareAdapters(adapters);
   if (!ready.length) {
-    console.log("Başlatılacak sunucu yok. Bilgileri düzeltmek için: npx air setup");
+    console.log("Başlatılacak sunucu yok. Bilgileri düzeltmek için: air setup");
     return;
   }
   for (const adapter of ready) {
@@ -178,6 +196,91 @@ async function connectCommand(values: Record<string, string>, flags: Set<string>
   });
 }
 
+async function chooseContentClients(explicit?: string): Promise<ContentClientId[]> {
+  if (explicit) {
+    if (!isContentClient(explicit)) {
+      throw new Error(`Bu istemci skill/kural desteklemez: ${explicit}`);
+    }
+    return [explicit];
+  }
+  return (await pickMany(
+    "Hangi istemcilere yazayım?",
+    CONTENT_CLIENTS.map((c) => ({ id: c.id, title: c.title })),
+  )) as ContentClientId[];
+}
+
+function contentOpts(flags: Set<string>, values: Record<string, string>) {
+  return {
+    project: flags.has("--project") ? values.project : null,
+    write: flags.has("--write"),
+    print: flags.has("--print"),
+  };
+}
+
+async function skillCommand(rest: string[], flags: Set<string>, values: Record<string, string>): Promise<void> {
+  const sub = rest[0];
+  const opts = contentOpts(flags, values);
+  if (sub === "list") {
+    const items = listSkills();
+    if (!items.length) {
+      console.log("Kayıtlı skill yok.");
+      return;
+    }
+    for (const item of items) console.log(`${item.id}\t${item.name}\t${item.url}`);
+    return;
+  }
+  if (sub === "remove") {
+    if (!rest[1]) throw new Error("air skill remove <id>");
+    const clients = values.client
+      ? await chooseContentClients(values.client)
+      : CONTENT_CLIENTS.map((c) => c.id);
+    const removed = removeSkill(rest[1], opts.project, clients);
+    if (!removed.length) console.log("Silinecek dosya yok.");
+    for (const dest of removed) console.log(`Silindi: ${dest}`);
+    return;
+  }
+  if (sub === "add") {
+    if (!rest[1]) throw new Error("air skill add <url>");
+    const clients = await chooseContentClients(values.client);
+    if (!clients.length) return;
+    await addSkill(rest[1], clients, opts);
+    return;
+  }
+  throw new Error("air skill add <url> | list | remove <id>");
+}
+
+async function ruleCommand(rest: string[], flags: Set<string>, values: Record<string, string>): Promise<void> {
+  const sub = rest[0];
+  const opts = contentOpts(flags, values);
+  if (sub === "list") {
+    const items = listRules();
+    if (!items.length) {
+      console.log("Kayıtlı kural yok.");
+      return;
+    }
+    for (const item of items) console.log(`${item.id}\t${item.name}\t${item.url}`);
+    return;
+  }
+  if (sub === "remove") {
+    if (!rest[1]) throw new Error("air rule remove <id>");
+    const clients = values.client
+      ? await chooseContentClients(values.client)
+      : CONTENT_CLIENTS.map((c) => c.id);
+    const removed = removeRule(rest[1], opts.project, clients);
+    if (!removed.length) console.log("Silinecek dosya yok.");
+    for (const dest of removed) console.log(`Silindi: ${dest}`);
+    return;
+  }
+  if (sub === "add") {
+    if (!rest[1]) throw new Error("air rule add <url>");
+    const clients = await chooseContentClients(values.client);
+    if (!clients.length) return;
+    await addRule(rest[1], clients, opts);
+    return;
+  }
+  throw new Error("air rule add <url> | list | remove <id>");
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const command = argv[0] ?? "help";
@@ -189,25 +292,28 @@ async function main(): Promise<void> {
     case "--help":
       help();
       return;
-    case "setup":
+    case "setup": {
+      let mcpIds: string[] = [];
       try {
-        await runSetup();
+        mcpIds = (await runSetupWizard()).mcp;
       } catch (error) {
         console.error(error instanceof Error ? error.message : error);
         console.log("Kurulum durmadı. Tekrar deneyebilirsiniz.");
       }
+      if (!mcpIds.length) return;
       try {
         if (await confirm("Şimdi başlatayım mı?", false)) {
-          await startCommand(enabledIds(), true);
+          await startCommand(mcpIds, true);
         }
         if (await confirm("Bir istemciye bağlayayım mı?", false)) {
           await connectCommand({}, flags);
         }
       } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        console.log("Devam etmek için: npx air setup");
+        console.log("Devam etmek için: air setup");
       }
       return;
+    }
     case "list":
       await listCommand();
       return;
@@ -235,6 +341,12 @@ async function main(): Promise<void> {
       return;
     case "connect":
       await connectCommand(values, flags);
+      return;
+    case "skill":
+      await skillCommand(rest, flags, values);
+      return;
+    case "rule":
+      await ruleCommand(rest, flags, values);
       return;
     default:
       throw new Error(`Bilinmeyen komut: ${command}\n`);

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { CONFIG_PATH, USER_DIR, USER_PATH, ensureDir } from "./paths.ts";
 import { adapters } from "./servers/index.ts";
-import type { CatalogEntry, CatalogFile, McpAdapter, UserPrefs } from "./types.ts";
+import type { AssetRef, CatalogEntry, CatalogFile, McpAdapter, UserPrefs } from "./types.ts";
 
 export function loadCatalog(): CatalogEntry[] {
   const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")) as CatalogFile;
@@ -19,16 +19,38 @@ function sanitizePorts(raw: unknown): Record<string, number> {
   return out;
 }
 
+function sanitizeAssets(raw: unknown): AssetRef[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AssetRef[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    if (typeof rec.id !== "string" || typeof rec.url !== "string" || typeof rec.name !== "string") continue;
+    const id = rec.id.trim();
+    const url = rec.url.trim();
+    const name = rec.name.trim();
+    if (!id || !url || !name) continue;
+    out.push({ id, url, name });
+  }
+  return out;
+}
+
+export function emptyPrefs(): UserPrefs {
+  return { enabled: [], ports: {}, skills: [], rules: [] };
+}
+
 export function loadPrefs(): UserPrefs {
-  if (!fs.existsSync(USER_PATH)) return { enabled: [], ports: {} };
+  if (!fs.existsSync(USER_PATH)) return emptyPrefs();
   try {
     const raw = JSON.parse(fs.readFileSync(USER_PATH, "utf8")) as UserPrefs;
     return {
       enabled: Array.isArray(raw.enabled) ? raw.enabled : [],
       ports: sanitizePorts(raw.ports),
+      skills: sanitizeAssets(raw.skills),
+      rules: sanitizeAssets(raw.rules),
     };
   } catch {
-    return { enabled: [], ports: {} };
+    return emptyPrefs();
   }
 }
 
@@ -99,4 +121,25 @@ export function allAdapters(): McpAdapter[] {
 
 export function resolveIds(ids: string[]): McpAdapter[] {
   return ids.map((id) => getAdapter(id));
+}
+
+export function listAssets(kind: "skills" | "rules"): AssetRef[] {
+  return loadPrefs()[kind];
+}
+
+export function upsertAsset(kind: "skills" | "rules", asset: AssetRef): void {
+  const prefs = loadPrefs();
+  const list = prefs[kind].filter((item) => item.id !== asset.id);
+  list.push(asset);
+  prefs[kind] = list;
+  savePrefs(prefs);
+}
+
+export function removeAsset(kind: "skills" | "rules", id: string): AssetRef | null {
+  const prefs = loadPrefs();
+  const found = prefs[kind].find((item) => item.id === id) ?? null;
+  if (!found) return null;
+  prefs[kind] = prefs[kind].filter((item) => item.id !== id);
+  savePrefs(prefs);
+  return found;
 }

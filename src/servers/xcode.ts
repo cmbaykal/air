@@ -24,7 +24,7 @@ export const xcode: McpAdapter = {
   async install() {
     if (!isMac) return { ok: false, message: "Xcode MCP yalnızca macOS'ta çalışır" };
     openUrl("https://apps.apple.com/app/xcode/id497799835");
-    return { ok: false, message: "Xcode App Store'dan kurulmalı. Kurunca tekrar: npx air setup" };
+    return { ok: false, message: "Xcode App Store'dan kurulmalı. Kurunca tekrar: air setup" };
   },
 
   async start() {

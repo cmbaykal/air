@@ -12,3 +12,8 @@ export const RUN_DIR = path.join(ROOT, ".run");
 export function ensureDir(dir: string): void {
   fs.mkdirSync(dir, { recursive: true });
 }
+
+export function backupTarget(target: string): void {
+  if (!fs.existsSync(target)) return;
+  fs.cpSync(target, `${target}.bak`, { recursive: true });
+}

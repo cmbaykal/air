@@ -32,22 +32,25 @@ chmod +x scripts/setup.macos.sh
 powershell -ExecutionPolicy Bypass -File scripts/setup.windows.ps1
 ```
 
-Script Node 20+ yoksa kurmayı dener (`brew` / `winget`), sonra `npm install` ve `npx air setup` çalıştırır.
+Script Node 20+ yoksa kurmayı dener (`brew` / `winget`), sonra `npm install`, `npm link` ve `air setup` çalıştırır.
 
 ### Node zaten varsa
 
 ```bash
 npm install
-npx air setup
+npm link
+air setup
 ```
 
-`setup` sırayla sorar:
+`setup` önce ne ekleyeceğini sorar (MCP, skill, kural). MCP seçilirse:
 
-1. Hangi MCP sunucuları bu projede açık olsun? (numara girin, örn. `1` veya `1 3`)
+1. Hangi MCP sunucuları açık olsun? (numara girin, örn. `1` veya `1 3`)
 2. Eksik uygulama varsa kurulsun mu?
 3. Token / vault yolu (gerekirse tarayıcıda oluşturma sayfasını açar)
 4. Şimdi başlatayım mı?
 5. Bir istemciye bağlayayım mı?
+
+Sunucu seçilmezse başlat / bağla sorulmaz. Skill veya kural seçilirse URL ve istemci sorulur.
 
 Token’lar `.env` dosyasına yazılır, git’e girmez.
 
@@ -60,7 +63,7 @@ Tüm komutlar proje klasöründen (`air`) çalışır.
 ### Sadece Figma
 
 ```bash
-npx air start figma
+air start figma
 ```
 
 Figma Desktop açılır. İlk seferde Figma içinde **Preferences → Enable Dev Mode MCP Server** açık olmalı. Hazır olunca adres: `http://127.0.0.1:3845/mcp`
@@ -68,21 +71,21 @@ Figma Desktop açılır. İlk seferde Figma içinde **Preferences → Enable Dev
 ### Sadece Jira / Notion / Obsidian
 
 ```bash
-npx air start jira
-npx air start notion
-npx air start obsidian
+air start jira
+air start notion
+air start obsidian
 ```
 
 Birden fazlası:
 
 ```bash
-npx air start figma jira
+air start figma jira
 ```
 
 ### Menüden seçerek
 
 ```bash
-npx air start
+air start
 ```
 
 Listeden numara girin. Hiçbir sunucu `enable` edilmemişse tam katalog gelir.
@@ -90,9 +93,9 @@ Listeden numara girin. Hiçbir sunucu `enable` edilmemişse tam katalog gelir.
 ### Kalıcı aç / kapa
 
 ```bash
-npx air enable figma jira    # menüde görünsün
-npx air disable notion       # menüden çıksın
-npx air list                 # hangisi açık / çalışıyor
+air enable figma jira    # menüde görünsün
+air disable notion       # menüden çıksın
+air list                 # hangisi açık / çalışıyor
 ```
 
 `enable` tek başına süreci başlatmaz. Çalıştırmak için `start` gerekir.  
@@ -101,13 +104,13 @@ npx air list                 # hangisi açık / çalışıyor
 ### Durdur / durum
 
 ```bash
-npx air status          # ayakta olanlar ve URL’leri
-npx air stop figma      # sadece Figma MCP (Figma uygulamasını kapatmaz)
-npx air stop            # Air’in başlattığı süreçler
-npx air doctor          # Node ve uygulamalar yerinde mi
+air status          # ayakta olanlar ve URL’leri
+air stop figma      # sadece Figma MCP (Figma uygulamasını kapatmaz)
+air stop            # Air’in başlattığı süreçler
+air doctor          # Node ve uygulamalar yerinde mi
 ```
 
-`npm start` = `npx air start` (hepsini açmaz, seçim ister).
+`npm start` = `air start` (hepsini açmaz, seçim ister).
 
 ---
 
@@ -116,7 +119,7 @@ npx air doctor          # Node ve uygulamalar yerinde mi
 Sunucu ayaktayken:
 
 ```bash
-npx air connect
+air connect
 ```
 
 İstemci seçin, snippet görünür. Onaylarsanız config dosyasına yazar (önce `.bak` yedek). Mevcut diğer MCP’ler silinmez. Sonra uygulamayı yeniden açın veya MCP listesini yenileyin.
@@ -124,11 +127,11 @@ npx air connect
 Doğrudan yazmak:
 
 ```bash
-npx air connect --client cursor --write
-npx air connect --client lmstudio --write
-npx air connect --client claude-desktop --write
-npx air connect --client opencode --write
-npx air connect --client claude-code --print
+air connect --client cursor --write
+air connect --client lmstudio --write
+air connect --client claude-desktop --write
+air connect --client opencode --write
+air connect --client claude-code --write
 ```
 
 `connect` yalnızca o anda **çalışan** sunucuları ekler.
@@ -139,9 +142,40 @@ npx air connect --client claude-code --print
 | LM Studio | `~/.lmstudio/mcp.json` |
 | Claude Desktop | macOS `~/Library/Application Support/Claude/claude_desktop_config.json` — Windows `%APPDATA%\Claude\claude_desktop_config.json` |
 | OpenCode | `~/.config/opencode/opencode.json` |
-| Claude Code | `claude mcp add --transport http air-figma http://127.0.0.1:3845/mcp` |
+| Claude Code | `~/.claude.json` (user scope, `type: "http"`) |
 
 Elle eklemek için `examples/` altındaki JSON’lar. `url` / Streamable HTTP destekleyen her MCP istemcisi aynı adresleri kullanır.
+
+---
+
+## 5. Skill ve kural
+
+URL’den indirip Cursor, Claude Code veya OpenCode’a yazar. Varsayılan kullanıcı genel dizinleri; `--project` ile repo (dizin yoksa mevcut klasör).
+
+```bash
+air skill add https://raw.githubusercontent.com/org/repo/main/SKILL.md --write
+air skill add https://github.com/org/repo/tree/main/skills/foo --client cursor --project --write
+air skill list
+air skill remove foo
+
+air rule add https://raw.githubusercontent.com/org/repo/main/style.md --write
+air rule add https://example.com/api.md --project ./my-app --write
+air rule list
+air rule remove style
+```
+
+`--client` yoksa menüden seçilir. `--write` onayı atlar. `--print` sadece gösterir.
+
+| | Cursor | Claude Code | OpenCode |
+|---|---|---|---|
+| Skill (genel) | `~/.cursor/skills/<ad>/` | `~/.claude/skills/<ad>/` | `~/.config/opencode/skills/<ad>/` |
+| Skill (proje) | `.cursor/skills/<ad>/` | `.claude/skills/<ad>/` | `.opencode/skills/<ad>/` |
+| Kural (genel) | `~/.cursor/rules/<id>.mdc` | `~/.claude/CLAUDE.md` | `~/.config/opencode/AGENTS.md` |
+| Kural (proje) | `.cursor/rules/<id>.mdc` | `CLAUDE.md` | `AGENTS.md` |
+
+Skill kaynağında `SKILL.md` + `name` / `description` frontmatter gerekir. Kural tek markdown dosyasıdır; Cursor’da `alwaysApply: true` `.mdc`, diğerlerinde `<!-- air:rule:<id> -->` bloğu.
+
+LM Studio ve Claude Desktop bu akışta yok.
 
 ---
 
@@ -171,17 +205,18 @@ Token ve vault `.env` içinde tutulur. Örnek: `.env.example`
 ```bash
 cd air
 npm install
-npx air setup              # bir kez: sunucu seç, token gir
-npx air start figma        # istediğin zaman, istediğin sunucu
-npx air connect --client cursor --write
+npm link
+air setup              # bir kez: sunucu seç, token gir
+air start figma        # istediğin zaman, istediğin sunucu
+air connect --client cursor --write
 ```
 
 Sonraki günler:
 
 ```bash
 cd air
-npx air start figma jira
-npx air status
+air start figma jira
+air status
 ```
 
 ---
@@ -193,6 +228,6 @@ npx air status
 3. `config/servers.json` — `id`, `title`, boş `port`, `defaultEnabled: false`
 
 ```bash
-npx air enable yeni
-npx air start yeni
+air enable yeni
+air start yeni
 ```

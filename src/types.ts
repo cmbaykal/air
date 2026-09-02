@@ -9,9 +9,17 @@ export interface CatalogFile {
   servers: CatalogEntry[];
 }
 
+export interface AssetRef {
+  id: string;
+  url: string;
+  name: string;
+}
+
 export interface UserPrefs {
   enabled: string[];
   ports: Record<string, number>;
+  skills: AssetRef[];
+  rules: AssetRef[];
 }
 
 export interface EnvField {
