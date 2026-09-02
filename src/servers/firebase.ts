@@ -1,13 +1,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import { npxBin, runInstall, runInteractive } from "../platform.ts";
-import { startNpx, stopProcess } from "../process.ts";
 import { confirm } from "../prompt.ts";
 import type { McpAdapter } from "../types.ts";
-
-const PORT = 3107;
 
 function projectDir(): string {
   const dir = getEnv("FIREBASE_PROJECT_DIR").trim();
@@ -26,22 +23,14 @@ function looksLoggedIn(output: string): boolean {
 export const firebase: McpAdapter = {
   id: "firebase",
   title: "Firebase",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [
     {
       key: "FIREBASE_PROJECT_DIR",
       label: "Firebase proje klasörü (firebase.json olan dizin)",
     },
   ],
-
-  async detect() {
-    return { ok: true, message: "Local Firebase MCP (firebase-tools + Google hesabı)" };
-  },
-
-  async install() {
-    return { ok: true };
-  },
 
   async validateEnv() {
     const dir = projectDir();
@@ -63,28 +52,20 @@ export const firebase: McpAdapter = {
 
   async start() {
     const dir = projectDir();
-    await startNpx("firebase", [
-      "supergateway",
-      "--stdio",
+    await startGateway(
+      "firebase",
       `npx -y firebase-tools@latest mcp --dir ${JSON.stringify(dir)}`,
-      "--port",
-      String(this.port),
-      "--host",
-      "127.0.0.1",
-      "--outputTransport",
-      "streamableHttp",
-      "--stateful",
-    ]);
-    if (!(await pollPort(this.port, 45_000))) {
-      throw new Error("Firebase MCP ayağa kalkmadı. .run/firebase.log dosyasına bakın.");
-    }
+      {},
+      this.port,
+      { timeoutMs: 45_000, extraArgs: ["--stateful"] },
+    );
   },
 
   async stop() {
-    await stopProcess("firebase", this.port);
+    await stopGateway("firebase", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

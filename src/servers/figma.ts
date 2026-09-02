@@ -1,20 +1,19 @@
 import { findFigmaApp, openApp } from "../platform.ts";
 import { pollPort, portOpen } from "../health.ts";
+import { isHealthy } from "../gateway.ts";
 import { installApp } from "../install.ts";
 import type { McpAdapter } from "../types.ts";
-
-const PORT = 3845;
 
 export const figma: McpAdapter = {
   id: "figma",
   title: "Figma",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   fixedPort: true,
   requiredEnv: [],
 
   async detect() {
-    if (await portOpen(PORT)) return { ok: true, message: "Dev Mode MCP açık" };
+    if (await portOpen(this.port)) return { ok: true, message: "Dev Mode MCP açık" };
     const app = findFigmaApp();
     if (app) return { ok: true, message: `Figma bulundu: ${app}` };
     return { ok: false, message: "Figma Desktop yüklü değil" };
@@ -31,16 +30,16 @@ export const figma: McpAdapter = {
   },
 
   async start() {
-    if (await portOpen(PORT)) return;
+    if (await portOpen(this.port)) return;
     if (!findFigmaApp()) {
-      const installed = await this.install();
+      const installed = (await this.install?.()) ?? { ok: false };
       if (!installed.ok) {
         throw new Error("Figma Desktop gerekli.");
       }
     }
     console.log("Figma açılıyor...");
     await openApp("Figma");
-    const ready = await pollPort(PORT, 25_000);
+    const ready = await pollPort(this.port, 25_000);
     if (!ready) {
       throw new Error(
         "Figma açık ama Dev Mode MCP yok (127.0.0.1:3845).\n" +
@@ -49,11 +48,9 @@ export const figma: McpAdapter = {
     }
   },
 
-  async stop() {
-    // Figma Desktop kullanıcı uygulaması; Air kapatmaz.
-  },
+  async stop() {},
 
   async health() {
-    return portOpen(PORT);
+    return isHealthy(this.port);
   },
 };

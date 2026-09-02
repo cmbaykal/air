@@ -1,13 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import { commandExists } from "../platform.ts";
-import { startNpx, stopProcess } from "../process.ts";
 import { installApp } from "../install.ts";
+import { detectUvx, ensureUvx } from "../uvx.ts";
 import type { McpAdapter } from "../types.ts";
-
-const PORT = 3106;
 
 function isGitRepo(dir: string): boolean {
   return fs.existsSync(path.join(dir, ".git"));
@@ -16,18 +14,15 @@ function isGitRepo(dir: string): boolean {
 export const git: McpAdapter = {
   id: "git",
   title: "Git",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [{ key: "GIT_REPO_PATH", label: "Git repo klasör yolu (içinde .git olan dizin)" }],
 
   async detect() {
     if (!(await commandExists("git"))) {
       return { ok: false, message: "git komutu yok" };
     }
-    if (!(await commandExists("uvx"))) {
-      return { ok: false, message: "uv (uvx) yok — Git MCP için gerekli" };
-    }
-    return { ok: true, message: "Local Git MCP (repo yolu)" };
+    return detectUvx("Git MCP");
   },
 
   async install() {
@@ -35,11 +30,7 @@ export const git: McpAdapter = {
       const ok = await installApp("Git", ["install", "git"], "Git.Git", "https://git-scm.com/downloads", "git");
       if (!ok) return { ok: false, message: "Git kurulmadı" };
     }
-    if (!(await commandExists("uvx"))) {
-      const ok = await installApp("uv", ["install", "uv"], "astral-sh.uv", "https://docs.astral.sh/uv/getting-started/installation/");
-      if (!ok) return { ok: false, message: "uv kurulmadı" };
-    }
-    return { ok: true };
+    return ensureUvx();
   },
 
   async validateEnv() {
@@ -56,27 +47,20 @@ export const git: McpAdapter = {
 
   async start() {
     const repo = getEnv("GIT_REPO_PATH");
-    await startNpx("git", [
-      "supergateway",
-      "--stdio",
+    await startGateway(
+      "git",
       `uvx mcp-server-git --repository ${JSON.stringify(repo)}`,
-      "--port",
-      String(this.port),
-      "--host",
-      "127.0.0.1",
-      "--outputTransport",
-      "streamableHttp",
-    ]);
-    if (!(await pollPort(this.port, 45_000))) {
-      throw new Error("Git MCP ayağa kalkmadı. .run/git.log dosyasına bakın.");
-    }
+      {},
+      this.port,
+      { timeoutMs: 45_000 },
+    );
   },
 
   async stop() {
-    await stopProcess("git", this.port);
+    await stopGateway("git", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

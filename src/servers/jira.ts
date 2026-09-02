@@ -1,11 +1,8 @@
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
-import { startNpx, stopProcess } from "../process.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import type { McpAdapter } from "../types.ts";
 
-const PORT = 3101;
-
-export function jiraHost(): string {
+function jiraHost(): string {
   let raw = getEnv("ATLASSIAN_SITE_NAME").trim();
   if (!raw) return "";
   raw = raw.replace(/\/+$/, "");
@@ -31,8 +28,8 @@ function siteNameForPackage(): string {
 export const jira: McpAdapter = {
   id: "jira",
   title: "Jira",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [
     { key: "ATLASSIAN_SITE_NAME", label: "Jira site (ör. sirket veya sirket.atlassian.net)" },
     { key: "ATLASSIAN_USER_EMAIL", label: "Atlassian e-posta" },
@@ -43,14 +40,6 @@ export const jira: McpAdapter = {
       helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
     },
   ],
-
-  async detect() {
-    return { ok: true, message: "Local Jira MCP (API token)" };
-  },
-
-  async install() {
-    return { ok: true };
-  },
 
   async validateEnv() {
     const email = getEnv("ATLASSIAN_USER_EMAIL");
@@ -85,35 +74,23 @@ export const jira: McpAdapter = {
   },
 
   async start() {
-    await startNpx(
+    await startGateway(
       "jira",
-      [
-        "supergateway",
-        "--stdio",
-        "npx -y @aashari/mcp-server-atlassian-jira",
-        "--port",
-        String(this.port),
-        "--host",
-        "127.0.0.1",
-        "--outputTransport",
-        "streamableHttp",
-      ],
+      "npx -y @aashari/mcp-server-atlassian-jira",
       {
         ATLASSIAN_SITE_NAME: siteNameForPackage(),
         ATLASSIAN_USER_EMAIL: getEnv("ATLASSIAN_USER_EMAIL"),
         ATLASSIAN_API_TOKEN: getEnv("ATLASSIAN_API_TOKEN"),
       },
+      this.port,
     );
-    if (!(await pollPort(this.port, 30_000))) {
-      throw new Error("Jira MCP ayağa kalkmadı. .run/jira.log dosyasına bakın.");
-    }
   },
 
   async stop() {
-    await stopProcess("jira", this.port);
+    await stopGateway("jira", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

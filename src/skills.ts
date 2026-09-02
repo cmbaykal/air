@@ -5,7 +5,7 @@ import {
   skillInstallDir,
   type ContentClientId,
 } from "./clients.ts";
-import { confirm } from "./prompt.ts";
+import { confirmWrite } from "./prompt.ts";
 import { backupTarget, ensureDir } from "./paths.ts";
 import { fetchSkillSources, slugify, type FetchedFile } from "./remote.ts";
 import { listAssets, removeAsset, upsertAsset } from "./registry.ts";
@@ -81,9 +81,7 @@ export async function addSkill(
   for (const client of clientIds) {
     const dest = skillInstallDir(client, asset.name, opts.project);
     const title = CONTENT_CLIENTS.find((c) => c.id === client)?.title ?? client;
-    console.log(`\n=== ${title} ===\n${dest}`);
-    const shouldWrite = opts.write || (await confirm(`${dest} dizinine yazayım mı?`, true));
-    if (!shouldWrite) continue;
+    if (!(await confirmWrite(title, dest, opts.write, "dizin"))) continue;
     writeSkillDir(dest, files);
     console.log(`Yazıldı: ${dest}`);
   }

@@ -35,14 +35,15 @@ export async function isRunning(id: string, port: number): Promise<boolean> {
   return pid !== null && isPidAlive(pid);
 }
 
-export async function startNpx(
+export async function startDetached(
   id: string,
+  bin: string,
   args: string[],
   env: Record<string, string> = {},
 ): Promise<void> {
   ensureDir(RUN_DIR);
   const log = fs.openSync(logPath(id), "a");
-  const child = spawn(npxBin(), ["-y", ...args], {
+  const child = spawn(bin, args, {
     detached: !isWin,
     stdio: ["ignore", log, log],
     env: { ...process.env, ...env },
@@ -54,6 +55,14 @@ export async function startNpx(
   }
   fs.writeFileSync(pidPath(id), String(child.pid), "utf8");
   child.unref();
+}
+
+export async function startNpx(
+  id: string,
+  args: string[],
+  env: Record<string, string> = {},
+): Promise<void> {
+  await startDetached(id, npxBin(), ["-y", ...args], env);
 }
 
 export async function stopProcess(id: string, port: number): Promise<boolean> {

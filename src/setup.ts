@@ -9,16 +9,18 @@ import type { McpAdapter } from "./types.ts";
 
 async function prepareOne(adapter: McpAdapter, reusePrompt: boolean): Promise<boolean> {
   console.log(`\n→ ${adapter.title}`);
-  const detected = await adapter.detect();
-  if (!detected.ok) {
-    console.log(detected.message ?? "Eksik.");
-    const installed = await adapter.install();
-    if (!installed.ok) {
-      console.log(installed.message ?? `${adapter.title} kurulamadı. Bu sunucu atlandı.`);
-      return false;
+  if (adapter.detect) {
+    const detected = await adapter.detect();
+    if (!detected.ok) {
+      console.log(detected.message ?? "Eksik.");
+      const installed = adapter.install ? await adapter.install() : { ok: false };
+      if (!installed.ok) {
+        console.log(installed.message ?? `${adapter.title} kurulamadı. Bu sunucu atlandı.`);
+        return false;
+      }
+    } else if (detected.message) {
+      console.log(detected.message);
     }
-  } else if (detected.message) {
-    console.log(detected.message);
   }
 
   let force = false;
@@ -99,7 +101,7 @@ async function setupFromUrl(kind: "skill" | "rule"): Promise<void> {
   else await addRule(url, clients, opts);
 }
 
-export async function runSetupWizard(): Promise<{ mcp: string[] }> {
+export async function runSetupWizard(): Promise<string[]> {
   const kinds = await pickMany("Ne ekleyelim?", [
     { id: "mcp", title: "MCP sunucusu" },
     { id: "skill", title: "Skill" },
@@ -107,13 +109,13 @@ export async function runSetupWizard(): Promise<{ mcp: string[] }> {
   ]);
   if (!kinds.length) {
     console.log("Hiçbir şey seçilmedi.");
-    return { mcp: [] };
+    return [];
   }
   let mcp: string[] = [];
   if (kinds.includes("mcp")) mcp = await runSetup();
   if (kinds.includes("skill")) await setupFromUrl("skill");
   if (kinds.includes("rule")) await setupFromUrl("rule");
-  return { mcp };
+  return mcp;
 }
 
 export async function maybePersistEnable(ids: string[]): Promise<void> {

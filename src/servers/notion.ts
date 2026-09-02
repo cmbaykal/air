@@ -1,15 +1,14 @@
 import { getEnv } from "../env.ts";
+import { isHealthy } from "../gateway.ts";
 import { pollPort } from "../health.ts";
 import { startNpx, stopProcess } from "../process.ts";
 import type { McpAdapter } from "../types.ts";
 
-const PORT = 3102;
-
 export const notion: McpAdapter = {
   id: "notion",
   title: "Notion",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [
     {
       key: "NOTION_TOKEN",
@@ -18,14 +17,6 @@ export const notion: McpAdapter = {
       helpUrl: "https://www.notion.so/my-integrations",
     },
   ],
-
-  async detect() {
-    return { ok: true, message: "Local Notion MCP (integration token)" };
-  },
-
-  async install() {
-    return { ok: true };
-  },
 
   async validateEnv() {
     const token = getEnv("NOTION_TOKEN");
@@ -59,7 +50,7 @@ export const notion: McpAdapter = {
       { NOTION_TOKEN: getEnv("NOTION_TOKEN") },
     );
     if (!(await pollPort(this.port, 30_000))) {
-      throw new Error("Notion MCP ayağa kalkmadı. .run/notion.log dosyasına bakın.");
+      throw new Error("notion MCP ayağa kalkmadı. .run/notion.log dosyasına bakın.");
     }
   },
 
@@ -68,6 +59,6 @@ export const notion: McpAdapter = {
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

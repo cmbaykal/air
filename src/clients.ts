@@ -17,15 +17,13 @@ export const CLIENTS: { id: ClientId; title: string }[] = [
 
 export type ContentClientId = "cursor" | "claude-code" | "opencode";
 
-export const CONTENT_CLIENTS: { id: ContentClientId; title: string }[] = [
-  { id: "cursor", title: "Cursor" },
-  { id: "claude-code", title: "Claude Code" },
-  { id: "opencode", title: "OpenCode" },
-];
-
 export function isContentClient(id: string): id is ContentClientId {
-  return CONTENT_CLIENTS.some((c) => c.id === id);
+  return id === "cursor" || id === "claude-code" || id === "opencode";
 }
+
+export const CONTENT_CLIENTS = CLIENTS.filter((c): c is { id: ContentClientId; title: string } =>
+  isContentClient(c.id),
+);
 
 function home(...parts: string[]): string {
   return path.join(os.homedir(), ...parts);
@@ -60,7 +58,7 @@ export function agentsMdFile(project: string | null): string {
       : home(".config", "opencode", "AGENTS.md");
 }
 
-export function clientConfigPath(id: ClientId): string | null {
+export function clientConfigPath(id: ClientId): string {
   switch (id) {
     case "cursor":
       return home(".cursor", "mcp.json");
@@ -87,26 +85,21 @@ function airKey(adapter: McpAdapter): string {
   return `air-${adapter.id}`;
 }
 
+export function mcpEntry(client: ClientId, url: string): Record<string, unknown> {
+  if (client === "claude-code") return { type: "http", url };
+  if (client === "opencode") return { type: "remote", url, enabled: true };
+  return { url };
+}
+
 export function snippetFor(client: ClientId, adapters: McpAdapter[]): string {
   if (adapters.length === 0) return "{}\n";
-  if (client === "claude-code") {
-    const mcpServers: Record<string, unknown> = {};
-    for (const a of adapters) {
-      mcpServers[airKey(a)] = { type: "http", url: a.url };
-    }
-    return `${JSON.stringify({ mcpServers }, null, 2)}\n`;
-  }
   if (client === "opencode") {
     const mcp: Record<string, unknown> = {};
-    for (const a of adapters) {
-      mcp[airKey(a)] = { type: "remote", url: a.url, enabled: true };
-    }
+    for (const a of adapters) mcp[airKey(a)] = mcpEntry(client, a.url);
     return `${JSON.stringify({ $schema: "https://opencode.ai/config.json", mcp }, null, 2)}\n`;
   }
   const mcpServers: Record<string, unknown> = {};
-  for (const a of adapters) {
-    mcpServers[airKey(a)] = { url: a.url };
-  }
+  for (const a of adapters) mcpServers[airKey(a)] = mcpEntry(client, a.url);
   return `${JSON.stringify({ mcpServers }, null, 2)}\n`;
 }
 
@@ -134,24 +127,18 @@ function writeJson(file: string, data: Record<string, unknown>): void {
 
 export function mergeClientConfig(client: ClientId, adapters: McpAdapter[]): string {
   const file = clientConfigPath(client);
-  if (!file) throw new Error("Bu istemci için config yolu yok.");
   backup(file);
   const data = readJson(file);
   if (client === "opencode") {
     const mcp = (data.mcp && typeof data.mcp === "object" ? data.mcp : {}) as Record<string, unknown>;
-    for (const a of adapters) {
-      mcp[airKey(a)] = { type: "remote", url: a.url, enabled: true };
-    }
+    for (const a of adapters) mcp[airKey(a)] = mcpEntry(client, a.url);
     data.mcp = mcp;
     if (!data.$schema) data.$schema = "https://opencode.ai/config.json";
   } else {
     const mcpServers = (
       data.mcpServers && typeof data.mcpServers === "object" ? data.mcpServers : {}
     ) as Record<string, unknown>;
-    for (const a of adapters) {
-      mcpServers[airKey(a)] =
-        client === "claude-code" ? { type: "http", url: a.url } : { url: a.url };
-    }
+    for (const a of adapters) mcpServers[airKey(a)] = mcpEntry(client, a.url);
     data.mcpServers = mcpServers;
   }
   writeJson(file, data);

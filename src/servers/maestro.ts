@@ -1,16 +1,15 @@
-import { pollPort } from "../health.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import { commandExists, isMac, openUrl } from "../platform.ts";
-import { startNpx, stopProcess } from "../process.ts";
 import { installApp } from "../install.ts";
 import type { McpAdapter } from "../types.ts";
 
-const PORT = 3111;
+const MAESTRO_DOCS = "https://docs.maestro.dev/getting-started/installing-maestro";
 
 export const maestro: McpAdapter = {
   id: "maestro",
   title: "Maestro",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [],
 
   async detect() {
@@ -20,7 +19,7 @@ export const maestro: McpAdapter = {
     if (!(await commandExists("maestro"))) {
       return { ok: false, message: "Maestro CLI yok" };
     }
-    return { ok: true, message: "Local Maestro MCP (UI test)" };
+    return { ok: true };
   },
 
   async install() {
@@ -44,39 +43,26 @@ export const maestro: McpAdapter = {
         const ok = await installApp(
           "Maestro CLI",
           ["install", "maestro"],
-          "maestro",
-          "https://docs.maestro.dev/getting-started/installing-maestro",
+          "",
+          MAESTRO_DOCS,
         );
         if (ok && (await commandExists("maestro"))) return { ok: true };
       }
-      openUrl("https://docs.maestro.dev/getting-started/installing-maestro");
-      return { ok: false, message: "Maestro CLI kurulmalı: curl -fsSL https://get.maestro.mobile.dev | bash" };
+      openUrl(MAESTRO_DOCS);
+      return { ok: false, message: `Maestro CLI kurulmalı: ${MAESTRO_DOCS}` };
     }
     return { ok: true };
   },
 
   async start() {
-    await startNpx("maestro", [
-      "supergateway",
-      "--stdio",
-      "maestro mcp",
-      "--port",
-      String(this.port),
-      "--host",
-      "127.0.0.1",
-      "--outputTransport",
-      "streamableHttp",
-    ]);
-    if (!(await pollPort(this.port, 45_000))) {
-      throw new Error("Maestro MCP ayağa kalkmadı. .run/maestro.log dosyasına bakın.");
-    }
+    await startGateway("maestro", "maestro mcp", {}, this.port, { timeoutMs: 45_000 });
   },
 
   async stop() {
-    await stopProcess("maestro", this.port);
+    await stopGateway("maestro", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

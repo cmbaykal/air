@@ -1,3 +1,5 @@
+export const USER_AGENT = "air";
+
 export interface FetchedFile {
   relativePath: string;
   content: string;
@@ -42,7 +44,7 @@ function parseGithubTree(url: string): { owner: string; repo: string; ref: strin
 async function fetchOk(url: string): Promise<string> {
   let res: Response;
   try {
-    res = await fetch(url, { headers: { "User-Agent": "air-mcp" } });
+    res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
   } catch (error) {
     throw new Error(`İndirilemedi: ${url} (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -57,7 +59,7 @@ async function fetchGithubDir(
   dir: string,
 ): Promise<FetchedFile[]> {
   const api = `https://api.github.com/repos/${owner}/${repo}/contents/${dir}?ref=${encodeURIComponent(ref)}`;
-  const res = await fetch(api, { headers: { "User-Agent": "air-mcp", Accept: "application/vnd.github+json" } });
+  const res = await fetch(api, { headers: { "User-Agent": USER_AGENT, Accept: "application/vnd.github+json" } });
   if (!res.ok) throw new Error(`GitHub klasörü alınamadı (${res.status}): ${dir}`);
   const items = (await res.json()) as { type: string; name: string; path: string; download_url?: string }[];
   if (!Array.isArray(items)) throw new Error("GitHub klasör yanıtı beklenmedik.");

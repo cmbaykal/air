@@ -69,7 +69,7 @@ export async function installApp(
     }
     return true;
   }
-  if (pm === "winget") {
+  if (pm === "winget" && wingetId) {
     console.log(`${title} winget ile kuruluyor...`);
     const result = await runInstall([
       "winget",
@@ -87,7 +87,7 @@ export async function installApp(
     }
     return true;
   }
-  if (isLinux && pm) {
+  if (isLinux && pm && pm !== "winget") {
     const pkg = resolveLinuxPkg(pm, linuxPkg);
     if (pkg) {
       console.log(`${title} ${pm} ile kuruluyor...`);

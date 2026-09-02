@@ -1,16 +1,20 @@
 {
   "servers": [
-    { "id": "figma", "title": "Figma", "port": 3845, "defaultEnabled": false },
-    { "id": "jira", "title": "Jira", "port": 3101, "defaultEnabled": false },
-    { "id": "notion", "title": "Notion", "port": 3102, "defaultEnabled": false },
-    { "id": "obsidian", "title": "Obsidian", "port": 3103, "defaultEnabled": false },
-    { "id": "github", "title": "GitHub", "port": 3104, "defaultEnabled": false },
-    { "id": "gitlab", "title": "GitLab", "port": 3105, "defaultEnabled": false },
-    { "id": "git", "title": "Git", "port": 3106, "defaultEnabled": false },
-    { "id": "firebase", "title": "Firebase", "port": 3107, "defaultEnabled": false },
-    { "id": "cloudflare", "title": "Cloudflare", "port": 3108, "defaultEnabled": false },
-    { "id": "xcode", "title": "Xcode", "port": 3109, "defaultEnabled": false },
-    { "id": "android", "title": "Android", "port": 3110, "defaultEnabled": false },
-    { "id": "maestro", "title": "Maestro", "port": 3111, "defaultEnabled": false }
+    { "id": "figma", "title": "Figma", "port": 3845 },
+    { "id": "jira", "title": "Jira", "port": 3101 },
+    { "id": "notion", "title": "Notion", "port": 3102 },
+    { "id": "obsidian", "title": "Obsidian (vault)", "port": 3103 },
+    { "id": "github", "title": "GitHub", "port": 3104 },
+    { "id": "gitlab", "title": "GitLab", "port": 3105 },
+    { "id": "git", "title": "Git", "port": 3106 },
+    { "id": "firebase", "title": "Firebase", "port": 3107 },
+    { "id": "cloudflare", "title": "Cloudflare", "port": 3108 },
+    { "id": "xcode", "title": "Xcode", "port": 3109 },
+    { "id": "android", "title": "Android", "port": 3110 },
+    { "id": "maestro", "title": "Maestro", "port": 3111 },
+    { "id": "asc", "title": "App Store Connect", "port": 3112 },
+    { "id": "play", "title": "Google Play", "port": 3113 },
+    { "id": "release", "title": "Mobile Release", "port": 3114 },
+    { "id": "sqlite", "title": "SQLite", "port": 3115 }
   ]
 }

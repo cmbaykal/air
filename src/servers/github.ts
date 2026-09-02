@@ -1,15 +1,14 @@
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
-import { startNpx, stopProcess } from "../process.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
+import { commandExists, openUrl } from "../platform.ts";
+import { USER_AGENT } from "../remote.ts";
 import type { McpAdapter } from "../types.ts";
-
-const PORT = 3104;
 
 export const github: McpAdapter = {
   id: "github",
   title: "GitHub",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [
     {
       key: "GITHUB_PERSONAL_ACCESS_TOKEN",
@@ -20,11 +19,13 @@ export const github: McpAdapter = {
   ],
 
   async detect() {
-    return { ok: true, message: "Local GitHub MCP (PAT)" };
+    if (await commandExists("docker")) return { ok: true };
+    return { ok: false, message: "Docker yok — GitHub MCP için gerekli" };
   },
 
   async install() {
-    return { ok: true };
+    openUrl("https://docs.docker.com/get-docker/");
+    return { ok: false, message: "Docker kurulmalı: https://docs.docker.com/get-docker/" };
   },
 
   async validateEnv() {
@@ -35,7 +36,7 @@ export const github: McpAdapter = {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "air-mcp",
+          "User-Agent": USER_AGENT,
         },
       });
       if (res.ok) return { ok: true };
@@ -47,31 +48,20 @@ export const github: McpAdapter = {
   },
 
   async start() {
-    await startNpx(
+    const token = getEnv("GITHUB_PERSONAL_ACCESS_TOKEN");
+    await startGateway(
       "github",
-      [
-        "supergateway",
-        "--stdio",
-        "npx -y @modelcontextprotocol/server-github",
-        "--port",
-        String(this.port),
-        "--host",
-        "127.0.0.1",
-        "--outputTransport",
-        "streamableHttp",
-      ],
-      { GITHUB_PERSONAL_ACCESS_TOKEN: getEnv("GITHUB_PERSONAL_ACCESS_TOKEN") },
+      "docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server",
+      { GITHUB_PERSONAL_ACCESS_TOKEN: token },
+      this.port,
     );
-    if (!(await pollPort(this.port, 30_000))) {
-      throw new Error("GitHub MCP ayağa kalkmadı. .run/github.log dosyasına bakın.");
-    }
   },
 
   async stop() {
-    await stopProcess("github", this.port);
+    await stopGateway("github", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

@@ -18,7 +18,7 @@ Kullanım:
   air list
   air enable <id...>
   air disable <id...>
-  air start [id...]
+  air start [id...] [--continue-on-error]
   air stop [id...]
   air status
   air doctor [id...]
@@ -34,8 +34,7 @@ Kullanım:
   air enable figma
   air start figma
   air connect --client cursor --write
-  air skill add https://raw.githubusercontent.com/org/repo/main/SKILL.md --write
-  air rule add https://example.com/style.md --project --write
+  air skill add https://raw.githubusercontent.com/anthropics/skills/main/skills/xlsx/SKILL.md --write
 `);
 }
 
@@ -170,6 +169,10 @@ async function doctorCommand(ids: string[]): Promise<void> {
   console.log(node.message);
   const targets = ids.length ? resolveIds(ids) : resolveIds(loadCatalog().map((s) => s.id));
   for (const adapter of targets) {
+    if (!adapter.detect) {
+      console.log(`${adapter.id}: bağımlılık kontrolü yok`);
+      continue;
+    }
     const result = await adapter.detect();
     console.log(`${adapter.id}: ${result.ok ? "ok" : "eksik"} ${result.message ?? ""}`.trim());
   }
@@ -217,68 +220,44 @@ function contentOpts(flags: Set<string>, values: Record<string, string>) {
   };
 }
 
-async function skillCommand(rest: string[], flags: Set<string>, values: Record<string, string>): Promise<void> {
+async function contentCommand(
+  kind: "skill" | "rule",
+  rest: string[],
+  flags: Set<string>,
+  values: Record<string, string>,
+): Promise<void> {
   const sub = rest[0];
   const opts = contentOpts(flags, values);
+  const list = kind === "skill" ? listSkills : listRules;
+  const add = kind === "skill" ? addSkill : addRule;
+  const remove = kind === "skill" ? removeSkill : removeRule;
   if (sub === "list") {
-    const items = listSkills();
+    const items = list();
     if (!items.length) {
-      console.log("Kayıtlı skill yok.");
+      console.log(kind === "skill" ? "Kayıtlı skill yok." : "Kayıtlı kural yok.");
       return;
     }
     for (const item of items) console.log(`${item.id}\t${item.name}\t${item.url}`);
     return;
   }
   if (sub === "remove") {
-    if (!rest[1]) throw new Error("air skill remove <id>");
+    if (!rest[1]) throw new Error(`air ${kind} remove <id>`);
     const clients = values.client
       ? await chooseContentClients(values.client)
       : CONTENT_CLIENTS.map((c) => c.id);
-    const removed = removeSkill(rest[1], opts.project, clients);
+    const removed = remove(rest[1], opts.project, clients);
     if (!removed.length) console.log("Silinecek dosya yok.");
     for (const dest of removed) console.log(`Silindi: ${dest}`);
     return;
   }
   if (sub === "add") {
-    if (!rest[1]) throw new Error("air skill add <url>");
+    if (!rest[1]) throw new Error(`air ${kind} add <url>`);
     const clients = await chooseContentClients(values.client);
     if (!clients.length) return;
-    await addSkill(rest[1], clients, opts);
+    await add(rest[1], clients, opts);
     return;
   }
-  throw new Error("air skill add <url> | list | remove <id>");
-}
-
-async function ruleCommand(rest: string[], flags: Set<string>, values: Record<string, string>): Promise<void> {
-  const sub = rest[0];
-  const opts = contentOpts(flags, values);
-  if (sub === "list") {
-    const items = listRules();
-    if (!items.length) {
-      console.log("Kayıtlı kural yok.");
-      return;
-    }
-    for (const item of items) console.log(`${item.id}\t${item.name}\t${item.url}`);
-    return;
-  }
-  if (sub === "remove") {
-    if (!rest[1]) throw new Error("air rule remove <id>");
-    const clients = values.client
-      ? await chooseContentClients(values.client)
-      : CONTENT_CLIENTS.map((c) => c.id);
-    const removed = removeRule(rest[1], opts.project, clients);
-    if (!removed.length) console.log("Silinecek dosya yok.");
-    for (const dest of removed) console.log(`Silindi: ${dest}`);
-    return;
-  }
-  if (sub === "add") {
-    if (!rest[1]) throw new Error("air rule add <url>");
-    const clients = await chooseContentClients(values.client);
-    if (!clients.length) return;
-    await addRule(rest[1], clients, opts);
-    return;
-  }
-  throw new Error("air rule add <url> | list | remove <id>");
+  throw new Error(`air ${kind} add <url> | list | remove <id>`);
 }
 
 async function main(): Promise<void> {
@@ -295,7 +274,7 @@ async function main(): Promise<void> {
     case "setup": {
       let mcpIds: string[] = [];
       try {
-        mcpIds = (await runSetupWizard()).mcp;
+        mcpIds = await runSetupWizard();
       } catch (error) {
         console.error(error instanceof Error ? error.message : error);
         console.log("Kurulum durmadı. Tekrar deneyebilirsiniz.");
@@ -343,10 +322,10 @@ async function main(): Promise<void> {
       await connectCommand(values, flags);
       return;
     case "skill":
-      await skillCommand(rest, flags, values);
+      await contentCommand("skill", rest, flags, values);
       return;
     case "rule":
-      await ruleCommand(rest, flags, values);
+      await contentCommand("rule", rest, flags, values);
       return;
     default:
       throw new Error(`Bilinmeyen komut: ${command}\n`);

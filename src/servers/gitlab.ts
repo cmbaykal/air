@@ -1,9 +1,6 @@
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
-import { startNpx, stopProcess } from "../process.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import type { McpAdapter } from "../types.ts";
-
-const PORT = 3105;
 
 function apiUrl(): string {
   let raw = getEnv("GITLAB_API_URL").trim() || "https://gitlab.com";
@@ -22,8 +19,8 @@ function apiUrl(): string {
 export const gitlab: McpAdapter = {
   id: "gitlab",
   title: "GitLab",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [
     {
       key: "GITLAB_API_URL",
@@ -36,14 +33,6 @@ export const gitlab: McpAdapter = {
       helpUrl: "https://gitlab.com/-/user_settings/personal_access_tokens",
     },
   ],
-
-  async detect() {
-    return { ok: true, message: "Local GitLab MCP (PAT)" };
-  },
-
-  async install() {
-    return { ok: true };
-  },
 
   async validateEnv() {
     const token = getEnv("GITLAB_PERSONAL_ACCESS_TOKEN");
@@ -64,34 +53,22 @@ export const gitlab: McpAdapter = {
   },
 
   async start() {
-    await startNpx(
+    await startGateway(
       "gitlab",
-      [
-        "supergateway",
-        "--stdio",
-        "npx -y @zereight/mcp-gitlab",
-        "--port",
-        String(this.port),
-        "--host",
-        "127.0.0.1",
-        "--outputTransport",
-        "streamableHttp",
-      ],
+      "npx -y @zereight/mcp-gitlab",
       {
         GITLAB_PERSONAL_ACCESS_TOKEN: getEnv("GITLAB_PERSONAL_ACCESS_TOKEN"),
         GITLAB_API_URL: apiUrl(),
       },
+      this.port,
     );
-    if (!(await pollPort(this.port, 30_000))) {
-      throw new Error("GitLab MCP ayağa kalkmadı. .run/gitlab.log dosyasına bakın.");
-    }
   },
 
   async stop() {
-    await stopProcess("gitlab", this.port);
+    await stopGateway("gitlab", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

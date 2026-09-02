@@ -18,6 +18,16 @@ export async function ask(question: string, def = ""): Promise<string> {
   });
 }
 
+export async function confirmWrite(
+  title: string,
+  dest: string,
+  write: boolean,
+  noun: "dizin" | "dosya",
+): Promise<boolean> {
+  console.log(`\n=== ${title} ===\n${dest}`);
+  return write || (await confirm(`${dest} ${noun}ine yazayım mı?`, true));
+}
+
 export async function confirm(question: string, def = true): Promise<boolean> {
   const hint = def ? "E/h" : "e/H";
   const answer = (await ask(`${question} [${hint}]`)).toLowerCase();

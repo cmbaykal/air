@@ -2,7 +2,6 @@ export interface CatalogEntry {
   id: string;
   title: string;
   port: number;
-  defaultEnabled: boolean;
 }
 
 export interface CatalogFile {
@@ -39,11 +38,10 @@ export interface McpAdapter {
   title: string;
   port: number;
   url: string;
-  /** true ise katalog portu sabittir (Figma Desktop 3845). */
   fixedPort?: boolean;
   requiredEnv: EnvField[];
-  detect(): Promise<DetectResult>;
-  install(): Promise<DetectResult>;
+  detect?(): Promise<DetectResult>;
+  install?(): Promise<DetectResult>;
   start(): Promise<void>;
   stop(): Promise<void>;
   health(): Promise<boolean>;

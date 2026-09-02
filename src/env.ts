@@ -28,22 +28,25 @@ export function getEnv(key: string): string {
   return (process.env[key] ?? "").trim();
 }
 
-export function setEnv(key: string, value: string): void {
-  const current = loadEnvFile();
-  current[key] = value;
-  process.env[key] = value;
-  const lines = Object.entries(current).map(([k, v]) => `${k}=${v}`);
-  fs.writeFileSync(ENV_PATH, `${lines.join("\n")}\n`, "utf8");
+export function applyEnvUpdate(existing: string, key: string, value: string): string {
+  const lines = existing.length ? existing.split(/\r?\n/) : [];
+  if (lines.length && lines[lines.length - 1] === "") lines.pop();
+  let found = false;
+  const next = lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return line;
+    if (trimmed.split("=")[0].trim() !== key) return line;
+    found = true;
+    return `${key}=${value}`;
+  });
+  if (!found) next.push(`${key}=${value}`);
+  return `${next.join("\n")}\n`;
 }
 
-export function clearEnv(keys: string[]): void {
-  const current = loadEnvFile();
-  for (const key of keys) {
-    delete current[key];
-    delete process.env[key];
-  }
-  const lines = Object.entries(current).map(([k, v]) => `${k}=${v}`);
-  fs.writeFileSync(ENV_PATH, lines.length ? `${lines.join("\n")}\n` : "", "utf8");
+export function setEnv(key: string, value: string): void {
+  process.env[key] = value;
+  const existing = fs.existsSync(ENV_PATH) ? fs.readFileSync(ENV_PATH, "utf8") : "";
+  fs.writeFileSync(ENV_PATH, applyEnvUpdate(existing, key, value), "utf8");
 }
 
 export async function ensureFields(fields: EnvField[], force = false): Promise<void> {

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { applyListenPort } from "./ports.ts";
 import { CONFIG_PATH, USER_DIR, USER_PATH, ensureDir } from "./paths.ts";
 import { adapters } from "./servers/index.ts";
 import type { AssetRef, CatalogEntry, CatalogFile, McpAdapter, UserPrefs } from "./types.ts";
@@ -64,10 +65,6 @@ export function enabledIds(): string[] {
   return loadPrefs().enabled.filter((id) => catalog.has(id));
 }
 
-export function isEnabled(id: string): boolean {
-  return enabledIds().includes(id);
-}
-
 export function enable(ids: string[]): string[] {
   const catalog = new Set(loadCatalog().map((s) => s.id));
   const unknown = ids.filter((id) => !catalog.has(id));
@@ -109,14 +106,11 @@ export function setAssignedPort(id: string, port: number | null): void {
 export function getAdapter(id: string): McpAdapter {
   const adapter = adapters[id];
   if (!adapter) throw new Error(`Adapter yok: ${id}`);
-  const port = loadPrefs().ports[id] ?? catalogPort(id);
-  adapter.port = port;
-  adapter.url = `http://127.0.0.1:${port}/mcp`;
+  const entry = loadCatalog().find((s) => s.id === id);
+  if (!entry) throw new Error(`Katalogda yok: ${id}`);
+  adapter.title = entry.title;
+  applyListenPort(adapter, loadPrefs().ports[id] ?? entry.port);
   return adapter;
-}
-
-export function allAdapters(): McpAdapter[] {
-  return loadCatalog().map((entry) => getAdapter(entry.id));
 }
 
 export function resolveIds(ids: string[]): McpAdapter[] {

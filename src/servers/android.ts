@@ -2,13 +2,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import { commandExists } from "../platform.ts";
-import { startNpx, stopProcess } from "../process.ts";
 import { installApp } from "../install.ts";
 import type { McpAdapter } from "../types.ts";
-
-const PORT = 3110;
 
 function androidHome(): string {
   const fromEnv = (getEnv("ANDROID_HOME") || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || "").trim();
@@ -24,15 +21,15 @@ function androidHome(): string {
 export const android: McpAdapter = {
   id: "android",
   title: "Android",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  port: 0,
+  url: "",
   requiredEnv: [],
 
   async detect() {
     const sdk = androidHome();
     const adb = sdk ? path.join(sdk, "platform-tools", "adb") : "";
     if (sdk && (fs.existsSync(adb) || (await commandExists("adb")))) {
-      return { ok: true, message: `Local AndroidBuild MCP (SDK: ${sdk})` };
+      return { ok: true, message: `SDK: ${sdk}` };
     }
     return { ok: false, message: "Android SDK yok (ANDROID_HOME / Android Studio)" };
   },
@@ -56,31 +53,14 @@ export const android: McpAdapter = {
       env.ANDROID_HOME = sdk;
       env.ANDROID_SDK_ROOT = sdk;
     }
-    await startNpx(
-      "android",
-      [
-        "supergateway",
-        "--stdio",
-        "npx -y @asjackson/androidbuild-mcp",
-        "--port",
-        String(this.port),
-        "--host",
-        "127.0.0.1",
-        "--outputTransport",
-        "streamableHttp",
-      ],
-      env,
-    );
-    if (!(await pollPort(this.port, 45_000))) {
-      throw new Error("Android MCP ayağa kalkmadı. .run/android.log dosyasına bakın.");
-    }
+    await startGateway("android", "npx -y @asjackson/androidbuild-mcp", env, this.port, { timeoutMs: 45_000 });
   },
 
   async stop() {
-    await stopProcess("android", this.port);
+    await stopGateway("android", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

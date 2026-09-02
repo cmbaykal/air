@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { wait } from "./health.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -37,61 +38,57 @@ export function npxBin(): string {
   return isWin ? "npx.cmd" : "npx";
 }
 
+export function findDesktopApp(paths: { mac?: string[]; win?: string[]; linux?: string[] }): string | null {
+  const list = isMac ? paths.mac : isWin ? paths.win : paths.linux;
+  return firstExisting(list ?? []);
+}
+
 export function findFigmaApp(): string | null {
   if (process.env.FIGMA_PATH && fs.existsSync(process.env.FIGMA_PATH)) {
     return process.env.FIGMA_PATH;
   }
-  if (isMac) {
-    const app = "/Applications/Figma.app";
-    return fs.existsSync(app) ? app : null;
-  }
-  if (isWin) {
-    const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
-    const direct = path.join(local, "Figma", "Figma.exe");
-    if (fs.existsSync(direct)) return direct;
-    const parent = path.join(local, "Figma");
-    if (fs.existsSync(parent)) {
-      const match = fs
-        .readdirSync(parent)
-        .filter((name) => name.startsWith("app-"))
-        .map((name) => path.join(parent, name, "Figma.exe"))
-        .find((file) => fs.existsSync(file));
-      if (match) return match;
-    }
-  }
-  if (isLinux) {
-    return firstExisting([
+  const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
+  const found = findDesktopApp({
+    mac: ["/Applications/Figma.app"],
+    win: [path.join(local, "Figma", "Figma.exe")],
+    linux: [
       "/opt/figma-linux/figma-linux",
       "/usr/bin/figma-linux",
       "/usr/bin/figma",
       "/snap/bin/figma-linux",
       path.join(os.homedir(), ".local", "bin", "figma-linux"),
-    ]);
+    ],
+  });
+  if (found) return found;
+  if (isWin) {
+    const parent = path.join(local, "Figma");
+    if (fs.existsSync(parent)) {
+      return (
+        fs
+          .readdirSync(parent)
+          .filter((name) => name.startsWith("app-"))
+          .map((name) => path.join(parent, name, "Figma.exe"))
+          .find((file) => fs.existsSync(file)) ?? null
+      );
+    }
   }
   return null;
 }
 
 export function findObsidianApp(): string | null {
-  if (isMac) {
-    const app = "/Applications/Obsidian.app";
-    return fs.existsSync(app) ? app : null;
-  }
-  if (isWin) {
-    const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
-    const exe = path.join(local, "Obsidian", "Obsidian.exe");
-    return fs.existsSync(exe) ? exe : null;
-  }
-  if (isLinux) {
-    return firstExisting([
+  const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
+  return findDesktopApp({
+    mac: ["/Applications/Obsidian.app"],
+    win: [path.join(local, "Obsidian", "Obsidian.exe")],
+    linux: [
       "/opt/Obsidian/obsidian",
       "/opt/obsidian/obsidian",
       "/usr/bin/obsidian",
       "/usr/bin/Obsidian",
       "/snap/bin/obsidian",
       path.join(os.homedir(), ".local", "bin", "obsidian"),
-    ]);
-  }
-  return null;
+    ],
+  });
 }
 
 export async function openApp(name: "Figma" | "Obsidian"): Promise<void> {
@@ -122,19 +119,15 @@ export async function killTree(pid: number): Promise<void> {
   } catch {
     try {
       process.kill(pid, "SIGTERM");
-    } catch {
-      /* already gone */
-    }
+    } catch {}
   }
-  await new Promise((r) => setTimeout(r, 250));
+  await wait(250);
   try {
     process.kill(-pid, "SIGKILL");
   } catch {
     try {
       process.kill(pid, "SIGKILL");
-    } catch {
-      /* gone */
-    }
+    } catch {}
   }
 }
 
@@ -158,15 +151,11 @@ export async function pidsOnPort(port: number): Promise<number[]> {
   try {
     const { stdout } = await execFileAsync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"]);
     return [...new Set(stdout.split(/\s+/).map(Number).filter((n) => n > 0))];
-  } catch {
-    /* Linux'ta lsof olmayabilir */
-  }
+  } catch {}
   try {
     const { stdout } = await execFileAsync("ss", ["-lptn", `sport = :${port}`]);
     return [...new Set([...stdout.matchAll(/pid=(\d+)/g)].map((m) => Number(m[1])).filter((n) => n > 0))];
-  } catch {
-    /* ss yok */
-  }
+  } catch {}
   try {
     const { stdout } = await execFileAsync("fuser", [`${port}/tcp`]);
     return [...new Set(stdout.trim().split(/\s+/).map(Number).filter((n) => n > 0))];

@@ -1,27 +1,24 @@
 import fs from "node:fs";
 import { getEnv } from "../env.ts";
-import { pollPort } from "../health.ts";
+import { isHealthy, startGateway, stopGateway } from "../gateway.ts";
 import { findObsidianApp } from "../platform.ts";
-import { startNpx, stopProcess } from "../process.ts";
 import { installApp } from "../install.ts";
 import { confirm } from "../prompt.ts";
 import type { McpAdapter } from "../types.ts";
 
-const PORT = 3103;
-
 export const obsidian: McpAdapter = {
   id: "obsidian",
-  title: "Obsidian",
-  port: PORT,
-  url: `http://127.0.0.1:${PORT}/mcp`,
+  title: "Obsidian (vault)",
+  port: 0,
+  url: "",
   requiredEnv: [{ key: "OBSIDIAN_VAULT_PATH", label: "Obsidian vault klasör yolu" }],
 
   async detect() {
     const vault = getEnv("OBSIDIAN_VAULT_PATH");
     if (vault && fs.existsSync(vault) && fs.statSync(vault).isDirectory()) {
-      return { ok: true, message: `Vault: ${vault}` };
+      return { ok: true, message: `Vault (filesystem): ${vault}` };
     }
-    return { ok: true, message: "Vault yolu start sırasında sorulur" };
+    return { ok: true, message: "Vault yolu start sırasında sorulur (filesystem MCP)" };
   },
 
   async install() {
@@ -56,27 +53,19 @@ export const obsidian: McpAdapter = {
 
   async start() {
     const vault = getEnv("OBSIDIAN_VAULT_PATH");
-    await startNpx("obsidian", [
-      "supergateway",
-      "--stdio",
+    await startGateway(
+      "obsidian",
       `npx -y @modelcontextprotocol/server-filesystem ${JSON.stringify(vault)}`,
-      "--port",
-      String(this.port),
-      "--host",
-      "127.0.0.1",
-      "--outputTransport",
-      "streamableHttp",
-    ]);
-    if (!(await pollPort(this.port, 30_000))) {
-      throw new Error("Obsidian MCP ayağa kalkmadı. .run/obsidian.log dosyasına bakın.");
-    }
+      {},
+      this.port,
+    );
   },
 
   async stop() {
-    await stopProcess("obsidian", this.port);
+    await stopGateway("obsidian", this.port);
   },
 
   async health() {
-    return pollPort(this.port, 500, 100);
+    return isHealthy(this.port);
   },
 };

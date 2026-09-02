@@ -7,7 +7,7 @@ import {
   cursorRuleFile,
   type ContentClientId,
 } from "./clients.ts";
-import { confirm } from "./prompt.ts";
+import { confirmWrite } from "./prompt.ts";
 import { backupTarget, ensureDir } from "./paths.ts";
 import { fetchText, slugFromUrl, slugify } from "./remote.ts";
 import { listAssets, removeAsset, upsertAsset } from "./registry.ts";
@@ -100,9 +100,7 @@ export async function addRule(
   for (const client of clientIds) {
     const dest = ruleTargets(client, asset.id, opts.project);
     const title = CONTENT_CLIENTS.find((c) => c.id === client)?.title ?? client;
-    console.log(`\n=== ${title} ===\n${dest}`);
-    const shouldWrite = opts.write || (await confirm(`${dest} dosyasına yazayım mı?`, true));
-    if (!shouldWrite) continue;
+    if (!(await confirmWrite(title, dest, opts.write, "dosya"))) continue;
     if (client === "cursor") writeFile(dest, toMdc(asset.id, body));
     else writeMarkdownBlock(dest, asset.id, body);
     console.log(`Yazıldı: ${dest}`);
