@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { wait } from "./health.ts";
+import { BIN_DIR } from "./paths.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -15,11 +16,55 @@ function firstExisting(paths: string[]): string | null {
   return paths.find((p) => p && fs.existsSync(p)) ?? null;
 }
 
-export function commandExists(name: string): Promise<boolean> {
+export function brewBinDirs(): string[] {
+  return [
+    "/opt/homebrew/bin",
+    "/opt/homebrew/sbin",
+    "/usr/local/bin",
+    "/usr/local/sbin",
+    "/home/linuxbrew/.linuxbrew/bin",
+    "/home/linuxbrew/.linuxbrew/sbin",
+    path.join(os.homedir(), ".linuxbrew", "bin"),
+  ];
+}
+
+export function extraBinDirs(): string[] {
+  return [
+    ...brewBinDirs(),
+    path.join(os.homedir(), ".local", "bin"),
+    path.join(os.homedir(), ".maestro", "bin"),
+    path.join(os.homedir(), ".cargo", "bin"),
+    BIN_DIR,
+    ...(isMac ? ["/Applications/Docker.app/Contents/Resources/bin"] : []),
+  ];
+}
+
+export function brewExecutable(): string | null {
+  return firstExisting(brewBinDirs().map((dir) => path.join(dir, "brew")));
+}
+
+export function prependToPath(dir: string): void {
+  if (!dir || !fs.existsSync(dir)) return;
+  const current = process.env.PATH ?? "";
+  const parts = current.split(path.delimiter).filter(Boolean);
+  if (parts.includes(dir)) return;
+  process.env.PATH = `${dir}${path.delimiter}${current}`;
+}
+
+export function applyKnownBinsToPath(): void {
+  for (const dir of extraBinDirs()) prependToPath(dir);
+}
+
+export async function commandExists(name: string): Promise<boolean> {
+  applyKnownBinsToPath();
   const cmd = isWin ? "where" : "which";
-  return execFileAsync(cmd, [name])
-    .then(() => true)
-    .catch(() => false);
+  try {
+    await execFileAsync(cmd, [name]);
+    return true;
+  } catch {
+    const exe = isWin ? `${name}.exe` : name;
+    return extraBinDirs().some((dir) => fs.existsSync(path.join(dir, exe)));
+  }
 }
 
 export function openUrl(url: string): void {

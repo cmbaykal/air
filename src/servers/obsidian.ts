@@ -26,12 +26,9 @@ export const obsidian: McpAdapter = {
     if (!(await confirm("Obsidian uygulaması şart değil. Yine de kurayım mı?", false))) {
       return { ok: true };
     }
-    const ok = await installApp(
-      "Obsidian",
-      ["install", "--cask", "obsidian"],
-      "Obsidian.Obsidian",
-      "https://obsidian.md/download",
-    );
+    const ok = await installApp("Obsidian", ["install", "--cask", "obsidian"], "Obsidian.Obsidian", {
+      downloadUrl: "https://obsidian.md/download",
+    });
     return ok ? { ok: true } : { ok: true, message: "Uygulama kurulmadı; vault yeterli" };
   },
 

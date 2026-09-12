@@ -4,6 +4,8 @@ Yerel MCP orkestratörü. Katalogdaki sunucuları kendi makinenizde çalıştır
 
 Hiçbir sunucu varsayılan olarak açık değildir. macOS, Windows ve Linux. Node.js 20+ gerekir. `npm link` sonrası komut: `air` (`.env` Air klasöründedir).
 
+Sunucular localhost’ta çalışır. GitHub MCP resmi `github-mcp-server` binary’sidir (`brew install github-mcp-server`); Docker veya `api.githubcopilot.com` remote MCP kullanılmaz.
+
 ## Kurulum
 
 ```bash
@@ -17,7 +19,7 @@ Node yoksa proje klasöründe:
 - Linux: `./scripts/setup.linux.sh`
 - Windows: `powershell -ExecutionPolicy Bypass -File scripts/setup.windows.ps1`
 
-Script Node 20+ yoksa kurmayı dener (`brew` / `winget`); Linux’ta Node LTS sayfasını açar. Sonra `npm install`, `npm link`, `air setup`.
+Script Node 20+ yoksa sorarak kurar: macOS/Linux’ta öncelik Homebrew (`brew` yoksa onu da kurmayı önerir), Windows’ta winget. Siteye yönlendirme yalnızca onayla. Sonra `npm install`, `npm link`, `air setup`. MCP bağımlılıkları (github-mcp-server, Android Studio, Java, Maestro, …) de aynı sırayı izler.
 
 Node varsa:
 
@@ -43,6 +45,8 @@ air stop figma
 air stop
 air doctor
 ```
+
+`air doctor` Node, Homebrew ve sunucu bağımlılıklarını kontrol eder; eksik veya hatalı olanlar için düzeltmeyi sorar.
 
 `enable` süreci başlatmaz. `air start figma` enable olmasa da başlatır. `npm start` = `air start`.
 
@@ -70,6 +74,8 @@ Elle eklemek: `air connect --print` veya `examples/cursor.mcp.json` (Cursor / LM
 ## Skill ve kural
 
 ```bash
+air skill packs
+air skill add mobile --write
 air skill add https://raw.githubusercontent.com/anthropics/skills/main/skills/xlsx/SKILL.md --write
 air skill list
 air skill remove xlsx
@@ -77,6 +83,8 @@ air skill remove xlsx
 air rule add https://raw.githubusercontent.com/anthropics/skills/main/skills/xlsx/SKILL.md --project --write
 air rule list
 ```
+
+`air skill add mobile` hazır paketi yazar: Compose / CMP, Kotlin Compose, iOS (SwiftUI/Tuist). Paket listesi: `config/skill-packs.json`. `air setup` skill adımında paketi de sunar.
 
 `--client` yoksa menü. `--write` onayı atlar. `--print` gösterir.
 
@@ -97,7 +105,7 @@ Skill kaynağında `SKILL.md` + `name` / `description` gerekir. Cursor kuralı `
 | jira | http://127.0.0.1:3101/mcp | Site + e-posta + [API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
 | notion | http://127.0.0.1:3102/mcp | [Integration token](https://www.notion.so/my-integrations) |
 | obsidian | http://127.0.0.1:3103/mcp | Vault klasörü (filesystem MCP; uygulama şart değil) |
-| github | http://127.0.0.1:3104/mcp | [GitHub PAT](https://github.com/settings/tokens) + Docker |
+| github | http://127.0.0.1:3104/mcp | [GitHub PAT](https://github.com/settings/tokens) + yerel `github-mcp-server` |
 | gitlab | http://127.0.0.1:3105/mcp | GitLab URL + [PAT](https://gitlab.com/-/user_settings/personal_access_tokens) |
 | git | http://127.0.0.1:3106/mcp | Repo yolu + `git` + `uv` |
 | firebase | http://127.0.0.1:3107/mcp | Proje klasörü + `firebase login` |
@@ -109,6 +117,7 @@ Skill kaynağında `SKILL.md` + `name` / `description` gerekir. Cursor kuralı `
 | play | http://127.0.0.1:3113/mcp | Play service account JSON + `uv` |
 | release | http://127.0.0.1:3114/mcp | `storepilot.yaml` (ASC/Play kimlikleri varsa kullanılır) |
 | sqlite | http://127.0.0.1:3115/mcp | SQLite `.db` yolu + `uv` |
+| bitbucket | http://127.0.0.1:3116/mcp | E-posta + [API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
 
 Değerler `.env` içinde. Örnek: `.env.example`
 

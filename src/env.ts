@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { ENV_PATH } from "./paths.ts";
 import { confirm, ask } from "./prompt.ts";
 import { openUrl } from "./platform.ts";
-import type { EnvField } from "./types.ts";
+import type { EnvField, McpAdapter } from "./types.ts";
 
 export function loadEnvFile(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -72,5 +72,18 @@ export async function ensureFields(fields: EnvField[], force = false): Promise<v
       if (!value) console.log("Boş bırakılamaz, tekrar girin.");
     }
     setEnv(field.key, value);
+  }
+}
+
+export async function fillAndValidateEnv(adapter: McpAdapter, force = false): Promise<boolean> {
+  if (!adapter.requiredEnv.length) return true;
+  for (;;) {
+    await ensureFields(adapter.requiredEnv, force);
+    if (!adapter.validateEnv) return true;
+    const valid = await adapter.validateEnv();
+    if (valid.ok) return true;
+    console.log(valid.message ?? `${adapter.title} doğrulanamadı.`);
+    if (!(await confirm("Bilgileri tekrar gireyim mi?", true))) return false;
+    force = true;
   }
 }

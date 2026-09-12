@@ -20,12 +20,9 @@ export const figma: McpAdapter = {
   },
 
   async install() {
-    const ok = await installApp(
-      "Figma Desktop",
-      ["install", "--cask", "figma"],
-      "Figma.Figma",
-      "https://www.figma.com/downloads/",
-    );
+    const ok = await installApp("Figma Desktop", ["install", "--cask", "figma"], "Figma.Figma", {
+      downloadUrl: "https://www.figma.com/downloads/",
+    });
     return ok ? { ok: true } : { ok: false, message: "Figma kurulmadı" };
   },
 

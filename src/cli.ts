@@ -1,12 +1,13 @@
 import path from "node:path";
 import { connectClients, CLIENTS, CONTENT_CLIENTS, isContentClient, type ClientId, type ContentClientId } from "./clients.ts";
-import { nodeOk } from "./doctor.ts";
+import { runDoctor } from "./doctor.ts";
 import { applyListenPort, resolveListenPort } from "./ports.ts";
 import { catalogPort, disable, enable, enabledIds, loadCatalog, resolveIds } from "./registry.ts";
 import { isRunning } from "./process.ts";
 import { confirm, pickMany } from "./prompt.ts";
 import { addRule, listRules, removeRule } from "./rules.ts";
-import { addSkill, listSkills, removeSkill } from "./skills.ts";
+import { loadPacks } from "./packs.ts";
+import { addSkill, addSkillPack, isPackId, listSkills, removeSkill } from "./skills.ts";
 import { maybePersistEnable, prepareAdapters, runSetupWizard } from "./setup.ts";
 import type { McpAdapter } from "./types.ts";
 
@@ -21,9 +22,10 @@ Kullanım:
   air start [id...] [--continue-on-error]
   air stop [id...]
   air status
-  air doctor [id...]
+  air doctor [id...]          # kontrol eder, eksiklerde düzeltmeyi sorar
   air connect [--client cursor|lmstudio|claude-desktop|claude-code|opencode] [--write] [--print]
-  air skill add <url> [--client cursor|claude-code|opencode] [--project [dir]] [--write] [--print]
+  air skill add <url|paket> [--client cursor|claude-code|opencode] [--project [dir]] [--write] [--print]
+  air skill packs
   air skill list
   air skill remove <id> [--client ...] [--project [dir]]
   air rule add <url> [--client cursor|claude-code|opencode] [--project [dir]] [--write] [--print]
@@ -34,6 +36,7 @@ Kullanım:
   air enable figma
   air start figma
   air connect --client cursor --write
+  air skill add mobile --write
   air skill add https://raw.githubusercontent.com/anthropics/skills/main/skills/xlsx/SKILL.md --write
 `);
 }
@@ -165,17 +168,7 @@ async function statusCommand(): Promise<void> {
 }
 
 async function doctorCommand(ids: string[]): Promise<void> {
-  const node = nodeOk();
-  console.log(node.message);
-  const targets = ids.length ? resolveIds(ids) : resolveIds(loadCatalog().map((s) => s.id));
-  for (const adapter of targets) {
-    if (!adapter.detect) {
-      console.log(`${adapter.id}: bağımlılık kontrolü yok`);
-      continue;
-    }
-    const result = await adapter.detect();
-    console.log(`${adapter.id}: ${result.ok ? "ok" : "eksik"} ${result.message ?? ""}`.trim());
-  }
+  await runDoctor(ids);
 }
 
 async function connectCommand(values: Record<string, string>, flags: Set<string>): Promise<void> {
@@ -231,6 +224,17 @@ async function contentCommand(
   const list = kind === "skill" ? listSkills : listRules;
   const add = kind === "skill" ? addSkill : addRule;
   const remove = kind === "skill" ? removeSkill : removeRule;
+  if (kind === "skill" && sub === "packs") {
+    const packs = loadPacks();
+    if (!packs.length) {
+      console.log("Kayıtlı paket yok.");
+      return;
+    }
+    for (const pack of packs) {
+      console.log(`${pack.id}\t${pack.title}\t${pack.skills.length} skill`);
+    }
+    return;
+  }
   if (sub === "list") {
     const items = list();
     if (!items.length) {
@@ -251,13 +255,21 @@ async function contentCommand(
     return;
   }
   if (sub === "add") {
-    if (!rest[1]) throw new Error(`air ${kind} add <url>`);
+    if (!rest[1]) throw new Error(kind === "skill" ? `air skill add <url|paket>` : `air ${kind} add <url>`);
     const clients = await chooseContentClients(values.client);
     if (!clients.length) return;
+    if (kind === "skill" && isPackId(rest[1])) {
+      await addSkillPack(rest[1], clients, opts);
+      return;
+    }
     await add(rest[1], clients, opts);
     return;
   }
-  throw new Error(`air ${kind} add <url> | list | remove <id>`);
+  throw new Error(
+    kind === "skill"
+      ? `air skill add <url|paket> | packs | list | remove <id>`
+      : `air ${kind} add <url> | list | remove <id>`,
+  );
 }
 
 async function main(): Promise<void> {

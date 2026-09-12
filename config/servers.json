@@ -6,6 +6,7 @@
     { "id": "obsidian", "title": "Obsidian (vault)", "port": 3103 },
     { "id": "github", "title": "GitHub", "port": 3104 },
     { "id": "gitlab", "title": "GitLab", "port": 3105 },
+    { "id": "bitbucket", "title": "Bitbucket", "port": 3116 },
     { "id": "git", "title": "Git", "port": 3106 },
     { "id": "firebase", "title": "Firebase", "port": 3107 },
     { "id": "cloudflare", "title": "Cloudflare", "port": 3108 },

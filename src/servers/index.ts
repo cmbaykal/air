@@ -1,5 +1,6 @@
 import { android } from "./android.ts";
 import { asc } from "./asc.ts";
+import { bitbucket } from "./bitbucket.ts";
 import { cloudflare } from "./cloudflare.ts";
 import { figma } from "./figma.ts";
 import { firebase } from "./firebase.ts";
@@ -23,6 +24,7 @@ export const adapters: Record<string, McpAdapter> = {
   obsidian,
   github,
   gitlab,
+  bitbucket,
   git,
   firebase,
   cloudflare,

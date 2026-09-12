@@ -1,0 +1,22 @@
+{
+  "packs": [
+    {
+      "id": "mobile",
+      "title": "Mobil geliştirici",
+      "skills": [
+        {
+          "url": "https://github.com/Meet-Miyani/compose-skill/tree/main"
+        },
+        {
+          "url": "https://github.com/haidrrrry/compose-kotlin-agent-skills/tree/main"
+        },
+        {
+          "url": "https://github.com/alpozcan/iOSAgentSkills/tree/main/skills",
+          "entry": "index.md",
+          "name": "ios-agent-skills",
+          "description": "Swift, SwiftUI ve Tuist ile modern iOS mimarisi ve uygulama kalıpları."
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,8 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 export const CONFIG_PATH = path.join(ROOT, "config", "servers.json");
 export const USER_DIR = path.join(ROOT, ".air");
 export const USER_PATH = path.join(USER_DIR, "user.json");
+export const BIN_DIR = path.join(USER_DIR, "bin");
+export const PACKS_PATH = path.join(ROOT, "config", "skill-packs.json");
 export const ENV_PATH = path.join(ROOT, ".env");
 export const RUN_DIR = path.join(ROOT, ".run");
 

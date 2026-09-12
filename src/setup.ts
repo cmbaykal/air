@@ -1,10 +1,11 @@
 import { CONTENT_CLIENTS, type ContentClientId } from "./clients.ts";
 import { nodeOk } from "./doctor.ts";
-import { ensureFields, getEnv, loadEnvFile } from "./env.ts";
+import { fillAndValidateEnv, getEnv, loadEnvFile } from "./env.ts";
 import { enable, enabledIds, loadCatalog, resolveIds } from "./registry.ts";
 import { ask, confirm, pickMany } from "./prompt.ts";
+import { loadPacks } from "./packs.ts";
 import { addRule } from "./rules.ts";
-import { addSkill } from "./skills.ts";
+import { addSkill, addSkillPack } from "./skills.ts";
 import type { McpAdapter } from "./types.ts";
 
 async function prepareOne(adapter: McpAdapter, reusePrompt: boolean): Promise<boolean> {
@@ -29,18 +30,11 @@ async function prepareOne(adapter: McpAdapter, reusePrompt: boolean): Promise<bo
       force = true;
     }
   }
-  for (;;) {
-    await ensureFields(adapter.requiredEnv, force);
-    if (!adapter.validateEnv) return true;
-    const valid = await adapter.validateEnv();
-    if (valid.ok) return true;
-    console.log(valid.message ?? `${adapter.title} doğrulanamadı.`);
-    if (!(await confirm("Bilgileri tekrar gireyim mi?", true))) {
-      console.log(`${adapter.title} atlandı.`);
-      return false;
-    }
-    force = true;
+  if (!(await fillAndValidateEnv(adapter, force))) {
+    console.log(`${adapter.title} atlandı.`);
+    return false;
   }
+  return true;
 }
 
 export async function prepareAdapters(adapters: McpAdapter[], reusePrompt = false): Promise<McpAdapter[]> {
@@ -86,19 +80,39 @@ export async function runSetup(): Promise<string[]> {
 }
 
 async function setupFromUrl(kind: "skill" | "rule"): Promise<void> {
-  const url = await ask(kind === "skill" ? "Skill URL" : "Kural URL");
-  if (!url) {
-    console.log("URL girilmedi.");
-    return;
-  }
   const clients = (await pickMany(
     "Hangi istemcilere yazayım?",
     CONTENT_CLIENTS.map((c) => ({ id: c.id, title: c.title })),
   )) as ContentClientId[];
   if (!clients.length) return;
   const opts = { project: null, write: false, print: false };
-  if (kind === "skill") await addSkill(url, clients, opts);
-  else await addRule(url, clients, opts);
+  if (kind === "rule") {
+    const url = await ask("Kural URL");
+    if (!url) {
+      console.log("URL girilmedi.");
+      return;
+    }
+    await addRule(url, clients, opts);
+    return;
+  }
+  const packs = loadPacks();
+  const picked = await pickMany("Skill kaynağı", [
+    ...packs.map((pack) => ({ id: `pack:${pack.id}`, title: `Paket: ${pack.title} (${pack.skills.length} skill)` })),
+    { id: "url", title: "URL ile tek skill" },
+  ]);
+  if (!picked.length) return;
+  for (const id of picked) {
+    if (id === "url") {
+      const url = await ask("Skill URL");
+      if (!url) {
+        console.log("URL girilmedi.");
+        continue;
+      }
+      await addSkill(url, clients, opts);
+      continue;
+    }
+    if (id.startsWith("pack:")) await addSkillPack(id.slice(5), clients, opts);
+  }
 }
 
 export async function runSetupWizard(): Promise<string[]> {

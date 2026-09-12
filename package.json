@@ -10,7 +10,7 @@
     "start": "tsx src/cli.ts start",
     "air": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/remote.test.ts src/env.test.ts src/gateway.test.ts"
+    "test": "tsx --test src/remote.test.ts src/env.test.ts src/gateway.test.ts src/install.test.ts src/doctor.test.ts src/packs.test.ts"
   },
   "engines": {
     "node": ">=20"

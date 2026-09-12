@@ -7,7 +7,8 @@ import {
 } from "./clients.ts";
 import { confirmWrite } from "./prompt.ts";
 import { backupTarget, ensureDir } from "./paths.ts";
-import { fetchSkillSources, slugify, type FetchedFile } from "./remote.ts";
+import { getPack, loadPacks, type PackSkill } from "./packs.ts";
+import { fetchSkillSources, slugify, type FetchedFile, type SkillFetchOpts } from "./remote.ts";
 import { listAssets, removeAsset, upsertAsset } from "./registry.ts";
 import type { AssetRef } from "./types.ts";
 
@@ -66,25 +67,64 @@ export function removeSkill(id: string, project: string | null, clients: Content
   return removed;
 }
 
+function fetchOpts(skill?: PackSkill): SkillFetchOpts | undefined {
+  if (!skill) return undefined;
+  return { entry: skill.entry, name: skill.name, description: skill.description };
+}
+
 export async function addSkill(
   url: string,
   clientIds: ContentClientId[],
-  opts: { project: string | null; write: boolean; print: boolean },
+  opts: { project: string | null; write: boolean; print: boolean; skipConfirm?: boolean; source?: PackSkill },
 ): Promise<AssetRef> {
-  const files = await fetchSkillSources(url);
+  const files = await fetchSkillSources(url, fetchOpts(opts.source));
   const meta = parseSkillMd(skillFile(files).content);
   const asset: AssetRef = { id: meta.name, url, name: meta.name };
   if (opts.print) {
     console.log(`skill ${asset.id} → ${asset.name}\n${files.map((f) => f.relativePath).join("\n")}`);
     return asset;
   }
+  const auto = Boolean(opts.write || opts.skipConfirm);
   for (const client of clientIds) {
     const dest = skillInstallDir(client, asset.name, opts.project);
     const title = CONTENT_CLIENTS.find((c) => c.id === client)?.title ?? client;
-    if (!(await confirmWrite(title, dest, opts.write, "dizin"))) continue;
+    if (!(await confirmWrite(title, dest, auto, "dizin"))) continue;
     writeSkillDir(dest, files);
     console.log(`Yazıldı: ${dest}`);
   }
   upsertAsset("skills", asset);
   return asset;
+}
+
+export async function addSkillPack(
+  packId: string,
+  clientIds: ContentClientId[],
+  opts: { project: string | null; write: boolean; print: boolean },
+): Promise<AssetRef[]> {
+  const pack = getPack(packId);
+  if (!pack) throw new Error(`Bilinmeyen paket: ${packId}. Mevcut: ${loadPacks().map((p) => p.id).join(", ")}`);
+  const written: AssetRef[] = [];
+  if (opts.print) {
+    for (const skill of pack.skills) {
+      written.push(await addSkill(skill.url, clientIds, { ...opts, source: skill }));
+    }
+    return written;
+  }
+  for (const client of clientIds) {
+    const title = CONTENT_CLIENTS.find((c) => c.id === client)?.title ?? client;
+    const label = `${title} ← paket ${pack.id} (${pack.skills.length} skill)`;
+    if (!(await confirmWrite(label, skillInstallDir(client, pack.id, opts.project), opts.write, "dizin"))) {
+      continue;
+    }
+    for (const skill of pack.skills) {
+      written.push(
+        await addSkill(skill.url, [client], { ...opts, write: true, skipConfirm: true, source: skill }),
+      );
+    }
+  }
+  return written;
+}
+
+export function isPackId(id: string): boolean {
+  return Boolean(getPack(id));
 }

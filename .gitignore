@@ -3,5 +3,6 @@ dist/
 .env
 .run/
 .air/user.json
+.air/bin/
 *.bak
 .DS_Store

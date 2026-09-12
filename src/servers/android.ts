@@ -35,12 +35,9 @@ export const android: McpAdapter = {
   },
 
   async install() {
-    const ok = await installApp(
-      "Android Studio",
-      ["install", "--cask", "android-studio"],
-      "Google.AndroidStudio",
-      "https://developer.android.com/studio",
-    );
+    const ok = await installApp("Android Studio", ["install", "--cask", "android-studio"], "Google.AndroidStudio", {
+      downloadUrl: "https://developer.android.com/studio",
+    });
     return ok
       ? { ok: true, message: "Android Studio kuruldu. SDK Manager'dan Platform-Tools yükleyin." }
       : { ok: false, message: "Android SDK kurulmadı" };
