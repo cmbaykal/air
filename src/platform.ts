@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { execFile, spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -216,9 +216,30 @@ export async function killPort(port: number): Promise<void> {
   }
 }
 
+/**
+ * Windows'ta `.cmd` (npx.cmd vb.) için cmd.exe kullanır; `shell: true` + args
+ * kombinasyonunu (DEP0190) kullanmaz.
+ */
+export function resolveSpawnTarget(
+  command: string,
+  args: string[],
+  win = isWin,
+): { command: string; args: string[] } {
+  if (!win) return { command, args };
+  return {
+    command: process.env.ComSpec || "cmd.exe",
+    args: ["/d", "/s", "/c", command, ...args],
+  };
+}
+
+export function spawnCommand(command: string, args: string[], options: SpawnOptions): ChildProcess {
+  const target = resolveSpawnTarget(command, args);
+  return spawn(target.command, target.args, { ...options, shell: false });
+}
+
 export function runInteractive(command: string, args: string[]): Promise<number> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: "inherit", shell: isWin });
+    const child = spawnCommand(command, args, { stdio: "inherit" });
     child.on("exit", (code) => resolve(code ?? 1));
     child.on("error", reject);
   });

@@ -1,8 +1,7 @@
-import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { RUN_DIR, ensureDir } from "./paths.ts";
-import { isWin, killPort, killTree, npxBin } from "./platform.ts";
+import { isWin, killPort, killTree, npxBin, spawnCommand } from "./platform.ts";
 import { portOpen, wait } from "./health.ts";
 
 function pidPath(id: string): string {
@@ -43,11 +42,10 @@ export async function startDetached(
 ): Promise<void> {
   ensureDir(RUN_DIR);
   const log = fs.openSync(logPath(id), "a");
-  const child = spawn(bin, args, {
+  const child = spawnCommand(bin, args, {
     detached: !isWin,
     stdio: ["ignore", log, log],
     env: { ...process.env, ...env },
-    shell: isWin,
   });
   if (!child.pid) {
     fs.closeSync(log);
